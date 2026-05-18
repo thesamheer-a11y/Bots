@@ -23,6 +23,9 @@ const bot = new TelegramBot(
 const OWNER_ID = "8715707181"
 const BOT_USERNAME = "userownerbot" 
 
+let mtProtoClient = null;
+let isScannerRunning = false;
+
 /* SAFE JSON LOAD */
 function loadJSON(file, def) {
     try {
@@ -43,7 +46,6 @@ let monitor = loadJSON("monitor.json", [])
 let owned = loadJSON("owned.json", []) 
 let freeUsers = loadJSON("freeUsers.json", {})
 
-/* SAVE LOGIC */
 function save(file, data) {
     try {
         fs.writeFileSync(file, JSON.stringify(data, null, 2))
@@ -71,7 +73,6 @@ function isPremium(id) {
     return false
 }
 
-/* PREMIUM TIMEFRAME CALCULATOR */
 function getExpiryTime(days) {
     return Date.now() + (days * 24 * 60 * 60 * 1000)
 }
@@ -120,16 +121,12 @@ function generateClaimPhoto(username) {
     return canvas.toBuffer("image/png")
 }
 
-/* DIRECT SNIPING PROTOCOL */
-async function tryDirectClaim(username, userId) {
-    if (!process.env.OWNER_SESSION) return false
-
-    const client = new TelegramClient(new StringSession(process.env.OWNER_SESSION), Number(process.env.API_ID), process.env.API_HASH, { connectionRetries: 1 })
+/* HIGH-SPEED CLAIM ENGINE */
+async function executeClaim(username, userId) {
+    if (!mtProtoClient || !mtProtoClient.connected) return false;
     
     try {
-        await client.connect()
-        
-        const createChannelResult = await client.invoke(
+        const createChannelResult = await mtProtoClient.invoke(
             new Api.channels.CreateChannel({
                 title: `Reserved Space ${username}`,
                 about: `Secured by @${BOT_USERNAME}`,
@@ -140,14 +137,14 @@ async function tryDirectClaim(username, userId) {
 
         const channelId = createChannelResult.chats[0].id
 
-        await client.invoke(
+        await mtProtoClient.invoke(
             new Api.channels.UpdateUsername({
                 channel: channelId,
                 username: username
             })
         )
 
-        let uniqueDeletionId = Math.floor(Math.random() * 1000) + 1
+        let uniqueDeletionId = Math.floor(Math.random() * 100000) + 1
 
         owned.push({
             username: username,
@@ -160,14 +157,12 @@ async function tryDirectClaim(username, userId) {
         const photoBuffer = generateClaimPhoto(username)
         const announcementText = `🔥 *BOOM! INSTANTLY SNIPED BY @${BOT_USERNAME}* 🔥\n\n👑 *Status:* SUCCESSFULLY SECURED\n🎯 *Username:* @${username}\n\n📦 *Ownership Note:* Check your claimed stock using \`/my\` to instantly release and grab this username!`
 
-        await bot.sendPhoto(userId, photoBuffer, { caption: announcementText, parse_mode: "Markdown" })
+        await bot.sendMessage(userId, announcementText, { parse_mode: "Markdown" }).catch(() => {});
+        await bot.sendPhoto(userId, photoBuffer).catch(() => {});
         return true
-
     } catch (e) {
-        console.error("Direct Core Hit Failure:", e.message)
+        console.error(`Sniper Execution Failure for @${username}:`, e.message)
         return false
-    } finally {
-        await client.disconnect()
     }
 }
 
@@ -187,15 +182,12 @@ This is an ultra-fast username sniper bot. Whenever a premium, short, or dropped
 
 🎯 To add a target, use: \`/add username\`
 📊 To view running targets, use: \`/track\`
-📦 To view your successfully claimed stock, use: \`/my\``,
+📦 To view your successfully claimed stock, use: \`/my\`
+ℹ️ Check your account status: \`/status\``,
         {
             parse_mode: "Markdown",
             reply_markup: {
-                inline_keyboard: [
-                    [
-                        { text: "💎 Buy Premium Slots", callback_data: "payment" }
-                    ]
-                ]
+                inline_keyboard: [[{ text: "💎 Buy Premium Slots", callback_data: "payment" }]]
             }
         }
     )
@@ -206,6 +198,11 @@ bot.onText(/\/add (.+)/, async (msg, match) => {
     try {
         let username = match[1].replace("@", "").trim().toLowerCase()
         const userId = msg.from.id
+
+        // Validation for valid username string
+        if(!/^[a-zA-Z0-9_]{4,32}$/.test(username)) {
+            return bot.sendMessage(msg.chat.id, `⚠️ *Invalid Username Format!* Use alphanumeric and underscores only (min 4 characters).`, { parse_mode: "Markdown" })
+        }
 
         if (!isPremium(userId) && String(userId) !== OWNER_ID) {
             if (!freeUsers[userId]) freeUsers[userId] = []
@@ -235,15 +232,12 @@ bot.onText(/\/add (.+)/, async (msg, match) => {
 
         if (isCurrentlyAvailable) {
             bot.sendMessage(msg.chat.id, `⚡ *Target is free! Attempting instant claim...*`, { parse_mode: "Markdown" })
-            let success = await tryDirectClaim(username, userId)
-            if (success) {
-                return 
-            } else {
-                bot.sendMessage(msg.chat.id, `❌ *Instant claim collision. Syncing to automatic track engine...*`, { parse_mode: "Markdown" })
-            }
+            let success = await executeClaim(username, userId)
+            if (success) return;
+            bot.sendMessage(msg.chat.id, `❌ *Instant claim collision. Syncing to automatic track engine...*`, { parse_mode: "Markdown" })
         }
 
-        let randomId = Math.floor(Math.random() * 1000) + 1
+        let randomId = Math.floor(Math.random() * 100000) + 1
         monitor.push({ user: userId, username: username, dId: randomId })
         
         if (!isPremium(userId) && String(userId) !== OWNER_ID) {
@@ -254,7 +248,7 @@ bot.onText(/\/add (.+)/, async (msg, match) => {
         bot.sendMessage(msg.chat.id, `🎯 *Target Hooked Successfully!*\n\nBot sniper engine is now watching: *@${username}*`, { parse_mode: "Markdown" })
 
     } catch (e) {
-        console.error("Add Logic Crash Protection:", e)
+        console.error("Add Logic Error:", e)
     }
 })
 
@@ -275,6 +269,27 @@ bot.onText(/\/track/, async (msg) => {
     bot.sendMessage(msg.chat.id, responseStr, { parse_mode: "Markdown" })
 })
 
+/* USER STATUS COMMAND (NEW UX IMPROVEMENT) */
+bot.onText(/\/status/, async (msg) => {
+    const userId = msg.from.id
+    const premiumActive = isPremium(userId)
+    const activeTargets = monitor.filter(x => x.user === userId).length
+
+    let statusMsg = `👤 *Account Profile Status*\n\n`
+    statusMsg += `🆔 User ID: \`${userId}\`\n`
+    statusMsg += `👑 Account Type: ${premiumActive ? "💎 *Premium Tier*" : "📁 *Free Tier*"}\n`
+    statusMsg += `🎯 Active Trackers: \`${activeTargets}\` ${premiumActive ? "/ Unlimited" : "/ 1"}\n`
+    
+    if (premiumActive && users[userId] && users[userId].expiry) {
+        const remainingTime = new Date(users[userId].expiry).toLocaleString()
+        statusMsg += `📆 Plan Valid Until: \`${remainingTime}\`\n`
+    } else if (!premiumActive) {
+        statusMsg += `\n💡 Upgrade your account using /plan to get high speed slots and track unlimited usernames.`
+    }
+
+    bot.sendMessage(msg.chat.id, statusMsg, { parse_mode: "Markdown" })
+})
+
 /* STOCK DISCOVERY */
 bot.onText(/\/my/, async (msg) => {
     const userId = msg.from.id
@@ -288,9 +303,7 @@ bot.onText(/\/my/, async (msg) => {
                       `Tap the corresponding command next to your username to delete the reserve channel and claim it yourself:\n\n`
 
     userClaims.forEach(x => {
-        if (!x.dId) {
-            x.dId = Math.floor(Math.random() * 1000) + 1
-        }
+        if (!x.dId) x.dId = Math.floor(Math.random() * 100000) + 1
         responseStr += `• @${x.username} ➔ /delete_${x.dId}\n`
     })
 
@@ -298,27 +311,27 @@ bot.onText(/\/my/, async (msg) => {
     bot.sendMessage(msg.chat.id, responseStr)
 })
 
-/* COMPLETE DISPOSAL MODULE (ENGLISH PLAIN TEXT OUTPUT) */
+/* DISPOSAL MODULE */
 bot.onText(/\/delete_(.+)/, async (msg, match) => {
     try {
         const targetId = Number(match[1])
         const userId = msg.from.id
 
         const index = owned.findIndex(x => x.claimedBy === userId && x.dId === targetId)
-
         if (index === -1) {
             return bot.sendMessage(msg.chat.id, "Error: Selected entry is invalid or has already been dropped.")
+        }
+
+        if (!mtProtoClient || !mtProtoClient.connected) {
+            return bot.sendMessage(msg.chat.id, "System Engine busy, please try again in a moment.")
         }
 
         const record = owned[index]
         const TargetUserHandle = record.username
         const TargetChannelUID = record.channelId
 
-        const client = new TelegramClient(new StringSession(process.env.OWNER_SESSION), Number(process.env.API_ID), process.env.API_HASH, { connectionRetries: 1 })
-        await client.connect()
-
         try {
-            await client.invoke(
+            await mtProtoClient.invoke(
                 new Api.channels.DeleteChannel({
                     channel: TargetChannelUID
                 })
@@ -332,15 +345,11 @@ bot.onText(/\/delete_(.+)/, async (msg, match) => {
 
             bot.sendMessage(
                 msg.chat.id,
-                "Success! I have successfully deleted the reserve channel holding @" + TargetUserHandle + ". You can now completely own and assign the username to your account immediately!"
+                `Success! I have successfully deleted the reserve channel holding @${TargetUserHandle}. You can now completely own and assign the username to your account immediately!`
             )
-
         } catch (channelErr) {
             bot.sendMessage(msg.chat.id, "Operation Error: " + channelErr.message)
-        } finally {
-            await client.disconnect()
         }
-
     } catch (e) {
         console.error("Disposal Fail Safe Catch:", e)
     }
@@ -348,10 +357,46 @@ bot.onText(/\/delete_(.+)/, async (msg, match) => {
 
 /* PLAN MANAGEMENT */
 bot.onText(/\/plan/, async (msg) => {
-    bot.sendMessage(msg.chat.id, `💎 *Premium Plans Slots*\n\n3D → ₹99\n7D → ₹199\n15D → ₹349\n30D → ₹599\n3M → ₹999\nLife → ₹3000`, { reply_markup: { inline_keyboard: [[{ text: "Buy Access", callback_data: "payment" }]] }, parse_mode: "Markdown" })
+    bot.sendMessage(msg.chat.id, `💎 *Premium Plans Slots & Features*
+
+• Unlock unlimited monitoring targets.
+• Real-time immediate claim loop.
+• High-priority server resources.
+
+📊 *Pricing Table:*
+3 Days ➔ ₹99
+7 Days ➔ ₹199
+15 Days ➔ ₹349
+30 Days ➔ ₹599
+3 Months ➔ ₹999
+Lifetime Access ➔ ₹3000`, { reply_markup: { inline_keyboard: [[{ text: "💳 Pay & Activate Premium", callback_data: "payment" }]] }, parse_mode: "Markdown" })
 })
 
-/* CALLBACK MASTER HANDLER */
+/* ADMIN COMMANDS (POWERFUL ENHANCEMENTS) */
+bot.onText(/\/stats/, async (msg) => {
+    if (String(msg.from.id) !== OWNER_ID) return;
+    const totalUsers = Object.keys(users).length;
+    const totalMonitors = monitor.length;
+    const totalClaims = owned.length;
+    
+    bot.sendMessage(msg.chat.id, `📊 *System Metrics Dashboard* (Admin Only)\n\n• Total Registered Premium Profiles: \`${totalUsers}\`\n• Active Loop Monitor Targets: \`${totalMonitors}\`\n• Total Successfully Secured Stock: \`${totalClaims}\``, { parse_mode: "Markdown" })
+})
+
+bot.onText(/\/clean/, async (msg) => {
+    if (String(msg.from.id) !== OWNER_ID) return;
+    let expiredCount = 0;
+    
+    for (const id in users) {
+        if (users[id].expiry && Date.now() > users[id].expiry) {
+            users[id].active = false;
+            expiredCount++;
+        }
+    }
+    saveAll();
+    bot.sendMessage(msg.chat.id, `🧹 *Database Garbage Collection Completed!* Cleaned up \`${expiredCount}\` expired accounts.`, { parse_mode: "Markdown" })
+})
+
+/* CALLBACK HANDLER */
 bot.on("callback_query", async (q) => {
     try {
         const data = q.data
@@ -362,53 +407,24 @@ bot.on("callback_query", async (q) => {
             return bot.editMessageText(`💎 *Premium Plans Slots*\n\n3D → ₹99\n7D → ₹199\n15D → ₹349\n30D → ₹599\n3M → ₹999\nLife → ₹3000\n\n💳 *UPI ID:* \`itzrao@fam\`\n\n📸 Screenshot yahan send karein!`, { chat_id, message_id, parse_mode: "Markdown" })
         }
 
-        // LEVEL UP: Admin activation commands sorting system
-        if (data.startsWith("p3d_")) {
-            let tUid = data.split("_")[1]
-            users[tUid] = { active: true, expiry: getExpiryTime(3) }
-            saveAll()
-            await bot.sendMessage(tUid, `✅ *Premium Plan Activated for 3 Days!*`, { parse_mode: "Markdown" })
-            return bot.editMessageCaption(`✅ Approved 3 Days for User: \`${tUid}\``, { chat_id, message_id })
+        const actionMapping = {
+            "p3d_": { days: 3, label: "3 Days" },
+            "p7d_": { days: 7, label: "7 Days" },
+            "p15d_": { days: 15, label: "15 Days" },
+            "p30d_": { days: 30, label: "30 Days" },
+            "p3m_": { days: 90, label: "3 Months" },
+            "plife_": { days: 3650, label: "Lifetime" }
         }
 
-        if (data.startsWith("p7d_")) {
-            let tUid = data.split("_")[1]
-            users[tUid] = { active: true, expiry: getExpiryTime(7) }
-            saveAll()
-            await bot.sendMessage(tUid, `✅ *Premium Plan Activated for 7 Days!*`, { parse_mode: "Markdown" })
-            return bot.editMessageCaption(`✅ Approved 7 Days for User: \`${tUid}\``, { chat_id, message_id })
-        }
-
-        if (data.startsWith("p15d_")) {
-            let tUid = data.split("_")[1]
-            users[tUid] = { active: true, expiry: getExpiryTime(15) }
-            saveAll()
-            await bot.sendMessage(tUid, `✅ *Premium Plan Activated for 15 Days!*`, { parse_mode: "Markdown" })
-            return bot.editMessageCaption(`✅ Approved 15 Days for User: \`${tUid}\``, { chat_id, message_id })
-        }
-
-        if (data.startsWith("p30d_")) {
-            let tUid = data.split("_")[1]
-            users[tUid] = { active: true, expiry: getExpiryTime(30) }
-            saveAll()
-            await bot.sendMessage(tUid, `✅ *Premium Plan Activated for 30 Days!*`, { parse_mode: "Markdown" })
-            return bot.editMessageCaption(`✅ Approved 30 Days for User: \`${tUid}\``, { chat_id, message_id })
-        }
-
-        if (data.startsWith("p3m_")) {
-            let tUid = data.split("_")[1]
-            users[tUid] = { active: true, expiry: getExpiryTime(90) }
-            saveAll()
-            await bot.sendMessage(tUid, `✅ *Premium Plan Activated for 3 Months!*`, { parse_mode: "Markdown" })
-            return bot.editMessageCaption(`✅ Approved 3 Months for User: \`${tUid}\``, { chat_id, message_id })
-        }
-
-        if (data.startsWith("plife_")) {
-            let tUid = data.split("_")[1]
-            users[tUid] = { active: true, expiry: getExpiryTime(3650) } // 10 Years
-            saveAll()
-            await bot.sendMessage(tUid, `✅ *Lifetime Premium Plan Activated!*`, { parse_mode: "Markdown" })
-            return bot.editMessageCaption(`✅ Approved Lifetime for User: \`${tUid}\``, { chat_id, message_id })
+        for (const prefix in actionMapping) {
+            if (data.startsWith(prefix)) {
+                let tUid = data.split("_")[1]
+                const config = actionMapping[prefix]
+                users[tUid] = { active: true, expiry: getExpiryTime(config.days) }
+                saveAll()
+                await bot.sendMessage(tUid, `✅ *Premium Plan Activated for ${config.label}!*`, { parse_mode: "Markdown" })
+                return bot.editMessageCaption(`✅ Approved ${config.label} for User: \`${tUid}\``, { chat_id, message_id })
+            }
         }
 
         if (data.startsWith("deny_")) {
@@ -417,34 +433,22 @@ bot.on("callback_query", async (q) => {
             return bot.deleteMessage(chat_id, message_id)
         }
     } catch (e) {
-        console.error("Callback core handling crash protection:", e.message)
+        console.error("Callback handling crash protection:", e.message)
     }
 })
 
-/* SCREENSHOT HANDLER WITH INLINE SELECTOR CONFIGURATION */
+/* SCREENSHOT HANDLER */
 bot.on("photo", async (msg) => {
     try {
         const senderId = msg.from.id
         const fileId = msg.photo[msg.photo.length - 1].file_id
 
-        // Admin panel gets instant configuration keys for duration assignment
         const adminKeyboard = {
             inline_keyboard: [
-                [
-                    { text: "3 Days ⚡", callback_data: `p3d_${senderId}` },
-                    { text: "7 Days ⚡", callback_data: `p7d_${senderId}` }
-                ],
-                [
-                    { text: "15 Days 🔥", callback_data: `p15d_${senderId}` },
-                    { text: "30 Days 🔥", callback_data: `p30d_${senderId}` }
-                ],
-                [
-                    { text: "3 Months 👑", callback_data: `p3m_${senderId}` },
-                    { text: "Lifetime 💎", callback_data: `plife_${senderId}` }
-                ],
-                [
-                    { text: "Deny ❌", callback_data: `deny_${senderId}` }
-                ]
+                [{ text: "3 Days ⚡", callback_data: `p3d_${senderId}` }, { text: "7 Days ⚡", callback_data: `p7d_${senderId}` }],
+                [{ text: "15 Days 🔥", callback_data: `p15d_${senderId}` }, { text: "30 Days 🔥", callback_data: `p30d_${senderId}` }],
+                [{ text: "3 Months 👑", callback_data: `p3m_${senderId}` }, { text: "Lifetime 💎", callback_data: `plife_${senderId}` }],
+                [{ text: "Deny ❌", callback_data: `deny_${senderId}` }]
             ]
         }
 
@@ -456,87 +460,76 @@ bot.on("photo", async (msg) => {
         
         bot.sendMessage(msg.chat.id, `📸 *Receipt delivered successfully to Admin! Please wait for approval...*`, { parse_mode: "Markdown" })
     } catch (e) {
-        console.error("Photo parsing module runtime error:", e.message)
+        console.error("Photo handling runtime error:", e.message)
     }
 })
 
-/* TIMED SCANNER CRON EXECUTION MODULE (Auto Removes From /track Queue Upon Success) */
-setInterval(async () => {
-    if (monitor.length === 0) return
-    if (!process.env.OWNER_SESSION) return
+/* REFACTORED SAFE QUEUE RUNNER (REPLACES BROKEN SETINTERVAL SPAM) */
+async function dynamicScannerLoop() {
+    if (isScannerRunning) return;
+    isScannerRunning = true;
 
-    for (let i = monitor.length - 1; i >= 0; i--) {
-        const data = monitor[i]
-        let isAvailable = false
+    while (true) {
+        if (monitor.length > 0 && mtProtoClient && mtProtoClient.connected) {
+            for (let i = monitor.length - 1; i >= 0; i--) {
+                const data = monitor[i]
+                let isAvailable = false
 
-        try {
-            await bot.getChat("@" + data.username)
-        } catch (err) {
-            if (err.response && err.response.body) {
-                const desc = err.response.body.description || ""
-                if (desc.includes("chat not found") || err.response.statusCode === 400) {
-                    isAvailable = true
+                try {
+                    await bot.getChat("@" + data.username)
+                } catch (err) {
+                    if (err.response && err.response.body) {
+                        const desc = err.response.body.description || ""
+                        if (desc.includes("chat not found") || err.response.statusCode === 400) {
+                            isAvailable = true
+                        }
+                    } else {
+                        isAvailable = true
+                    }
                 }
-            } else {
-                isAvailable = true
+
+                if (isAvailable) {
+                    let success = await executeClaim(data.username, data.user)
+                    if (success) {
+                        monitor.splice(i, 1)
+                        saveAll()
+                    }
+                }
+                // Small sleep interval inside pool sequence to defend over flood limits
+                await new Promise(resolve => setTimeout(resolve, 350));
             }
         }
-
-        if (isAvailable) {
-            const client = new TelegramClient(new StringSession(process.env.OWNER_SESSION), Number(process.env.API_ID), process.env.API_HASH, { connectionRetries: 1 })
-            
-            try {
-                await client.connect()
-                
-                const createChannelResult = await client.invoke(
-                    new Api.channels.CreateChannel({
-                        title: `Reserved Space ${data.username}`,
-                        about: `Secured by @${BOT_USERNAME}`,
-                        broadcast: true,
-                        megagroup: false
-                    })
-                )
-
-                const channelId = createChannelResult.chats[0].id
-
-                await client.invoke(
-                    new Api.channels.UpdateUsername({
-                        channel: channelId,
-                        username: data.username
-                    })
-                )
-
-                let uniqueDeletionId = Math.floor(Math.random() * 1000) + 1
-
-                owned.push({
-                    username: data.username,
-                    claimedBy: data.user,
-                    channelId: channelId.toString(),
-                    dId: uniqueDeletionId
-                })
-
-                // INSTANT PURGE FROM ACTIVE TRACKS LOOP QUEUE 
-                monitor.splice(i, 1)
-                saveAll()
-
-                const photoBuffer = generateClaimPhoto(data.username)
-                const announcementText = `🔥 *BOOM! USERNAME SNIPED BY @${BOT_USERNAME}* 🔥\n\n👑 *Status:* SUCCESSFULLY SECURED\n🎯 *Username:* @${data.username}\n\n📦 *Ownership Note:* Check your claimed stock using \`/my\` to instantly release and grab this username!`
-
-                await bot.sendPhoto(data.user, photoBuffer, { caption: announcementText, parse_mode: "Markdown" })
-                
-            } catch (e) {
-                console.error("Cron Runtime Exception Blocked:", e.message)
-            } finally {
-                await client.disconnect()
-            }
-        }
+        // Base idle cool down window
+        await new Promise(resolve => setTimeout(resolve, 1000));
     }
-}, 1000)
+}
+
+/* SYSTEM BOOT AND STABLE CONNECTION INITIALIZATION */
+async function initializeSystem() {
+    if (!process.env.OWNER_SESSION || !process.env.API_ID || !process.env.API_HASH) {
+        console.error("❌ Critical Error: MTProto environment configurations are missing!");
+        process.exit(1);
+    }
+    
+    console.log("⚡ Connecting global MTProto string session interface...");
+    mtProtoClient = new TelegramClient(
+        new StringSession(process.env.OWNER_SESSION), 
+        Number(process.env.API_ID), 
+        process.env.API_HASH, 
+        { connectionRetries: 5 }
+    )
+    
+    await mtProtoClient.connect()
+    console.log("🚀 ALL FIXES ONLINE: AUTOMATED TIMED ENGINE RUNNING CLEAN");
+    
+    // Fire safe automated non-overlapping infinite lookup engine
+    dynamicScannerLoop();
+}
 
 /* INTEGRITY RUNTIME STABILITY LOGS */
 process.on("unhandledRejection", () => {})
 process.on("uncaughtException", () => {})
 bot.on("polling_error", () => {})
 
-console.log("🚀 ALL FIXES ONLINE: AUTOMATED TIMED ENGINE RUNNING CLEAN");
+initializeSystem();
         
