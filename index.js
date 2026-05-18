@@ -4,7 +4,7 @@ const TelegramBot = require("node-telegram-bot-api")
 const fs = require("fs")
 const { createCanvas } = require("canvas")
 
-/* FIXED IMPORTS */
+/* TELEGRAM MTPROTO IMPORTS */
 const { TelegramClient } = require("telegram")
 const { StringSession } = require("telegram/sessions")
 const { Api } = require("telegram/tl")
@@ -15,7 +15,7 @@ const bot = new TelegramBot(
     {
         polling: {
             autoStart: true,
-            interval: 200
+            interval: 300
         }
     }
 )
@@ -37,13 +37,13 @@ function loadJSON(file, def) {
     }
 }
 
-/* DATABASE */
+/* DATABASE INSTANCES */
 let users = loadJSON("users.json", {})
 let monitor = loadJSON("monitor.json", [])
 let owned = loadJSON("owned.json", []) 
 let freeUsers = loadJSON("freeUsers.json", {})
 
-/* SAVE DATA */
+/* SAVE LOGIC */
 function save(file, data) {
     try {
         fs.writeFileSync(file, JSON.stringify(data, null, 2))
@@ -57,13 +57,26 @@ function saveAll() {
     save("freeUsers.json", freeUsers)
 }
 
-/* PREMIUM CHECK */
+/* PREMIUM VALIDATION WITH EXPIRY CHECK */
 function isPremium(id) {
     if (String(id) === OWNER_ID) return true
-    return users[id] && users[id].active
+    if (users[id] && users[id].active) {
+        if (users[id].expiry && Date.now() > users[id].expiry) {
+            users[id].active = false
+            saveAll()
+            return false
+        }
+        return true
+    }
+    return false
 }
 
-/* HIGH-TECH CLAIMS PHOTO GENERATOR */
+/* PREMIUM TIMEFRAME CALCULATOR */
+function getExpiryTime(days) {
+    return Date.now() + (days * 24 * 60 * 60 * 1000)
+}
+
+/* PHOTO GENERATOR */
 function generateClaimPhoto(username) {
     const width = 800
     const height = 450
@@ -107,11 +120,11 @@ function generateClaimPhoto(username) {
     return canvas.toBuffer("image/png")
 }
 
-/* SEAMLESS DIRECT CLAIM LOGIC FUNCTION */
+/* DIRECT SNIPING PROTOCOL */
 async function tryDirectClaim(username, userId) {
     if (!process.env.OWNER_SESSION) return false
 
-    const client = new TelegramClient(new StringSession(process.env.OWNER_SESSION), Number(process.env.API_ID), process.env.API_HASH, { connectionRetries: 3 })
+    const client = new TelegramClient(new StringSession(process.env.OWNER_SESSION), Number(process.env.API_ID), process.env.API_HASH, { connectionRetries: 1 })
     
     try {
         await client.connect()
@@ -151,7 +164,7 @@ async function tryDirectClaim(username, userId) {
         return true
 
     } catch (e) {
-        console.error("Direct Claim Internal Error:", e.message)
+        console.error("Direct Core Hit Failure:", e.message)
         return false
     } finally {
         await client.disconnect()
@@ -180,10 +193,6 @@ This is an ultra-fast username sniper bot. Whenever a premium, short, or dropped
             reply_markup: {
                 inline_keyboard: [
                     [
-                        { text: "🇮🇳 Hindi", callback_data: "lang_hindi" },
-                        { text: "🇵🇰 Punjabi", callback_data: "lang_punjabi" }
-                    ],
-                    [
                         { text: "💎 Buy Premium Slots", callback_data: "payment" }
                     ]
                 ]
@@ -192,7 +201,7 @@ This is an ultra-fast username sniper bot. Whenever a premium, short, or dropped
     )
 })
 
-/* ADD COMMAND (With Instant Firing Engine) */
+/* ADD ENTRY CONTROLLER */
 bot.onText(/\/add (.+)/, async (msg, match) => {
     try {
         let username = match[1].replace("@", "").trim().toLowerCase()
@@ -210,7 +219,6 @@ bot.onText(/\/add (.+)/, async (msg, match) => {
             return bot.sendMessage(msg.chat.id, `⚠️ This username is already in our high-speed sniper loop.`)
         }
 
-        // STEP 1: Instant Check immediately upon receiving input
         let isCurrentlyAvailable = false
         try {
             await bot.getChat("@" + username)
@@ -225,22 +233,16 @@ bot.onText(/\/add (.+)/, async (msg, match) => {
             }
         }
 
-        // STEP 2: If available now, execute direct claim bypass
         if (isCurrentlyAvailable) {
             bot.sendMessage(msg.chat.id, `⚡ *Target is free! Attempting instant claim...*`, { parse_mode: "Markdown" })
             let success = await tryDirectClaim(username, userId)
             if (success) {
-                if (!isPremium(userId) && String(userId) !== OWNER_ID) {
-                    freeUsers[userId].push(username)
-                    saveAll()
-                }
-                return // Exit out cleanly, no need to push to /track loop
+                return 
             } else {
-                bot.sendMessage(msg.chat.id, `❌ *Instant claim failed due to network collision. Putting into live track loop now...*`, { parse_mode: "Markdown" })
+                bot.sendMessage(msg.chat.id, `❌ *Instant claim collision. Syncing to automatic track engine...*`, { parse_mode: "Markdown" })
             }
         }
 
-        // STEP 3: If not instantly available, push to high-speed loop queue securely
         let randomId = Math.floor(Math.random() * 1000) + 1
         monitor.push({ user: userId, username: username, dId: randomId })
         
@@ -252,11 +254,11 @@ bot.onText(/\/add (.+)/, async (msg, match) => {
         bot.sendMessage(msg.chat.id, `🎯 *Target Hooked Successfully!*\n\nBot sniper engine is now watching: *@${username}*`, { parse_mode: "Markdown" })
 
     } catch (e) {
-        console.error("Add Command Error:", e)
+        console.error("Add Logic Crash Protection:", e)
     }
 })
 
-/* TRACK COMMAND (Active scans list) */
+/* TRACK DISPLAY */
 bot.onText(/\/track/, async (msg) => {
     const userId = msg.from.id
     const myTargets = monitor.filter(x => x.user === userId)
@@ -273,7 +275,7 @@ bot.onText(/\/track/, async (msg) => {
     bot.sendMessage(msg.chat.id, responseStr, { parse_mode: "Markdown" })
 })
 
-/* MY COMMAND (Secured stock ready for drop) */
+/* STOCK DISCOVERY */
 bot.onText(/\/my/, async (msg) => {
     const userId = msg.from.id
     const userClaims = owned.filter(x => x.claimedBy === userId)
@@ -296,7 +298,7 @@ bot.onText(/\/my/, async (msg) => {
     bot.sendMessage(msg.chat.id, responseStr)
 })
 
-/* DROPPING PROTOCOL WITH SOLID CLEAN OUTPUT */
+/* COMPLETE DISPOSAL MODULE (ENGLISH PLAIN TEXT OUTPUT) */
 bot.onText(/\/delete_(.+)/, async (msg, match) => {
     try {
         const targetId = Number(match[1])
@@ -312,7 +314,7 @@ bot.onText(/\/delete_(.+)/, async (msg, match) => {
         const TargetUserHandle = record.username
         const TargetChannelUID = record.channelId
 
-        const client = new TelegramClient(new StringSession(process.env.OWNER_SESSION), Number(process.env.API_ID), process.env.API_HASH, { connectionRetries: 3 })
+        const client = new TelegramClient(new StringSession(process.env.OWNER_SESSION), Number(process.env.API_ID), process.env.API_HASH, { connectionRetries: 1 })
         await client.connect()
 
         try {
@@ -323,12 +325,9 @@ bot.onText(/\/delete_(.+)/, async (msg, match) => {
             )
 
             owned.splice(index, 1)
-            
-            // Re-open slot inside free tier if available
             if (freeUsers[userId]) {
                 freeUsers[userId] = freeUsers[userId].filter(u => u !== TargetUserHandle)
             }
-            
             saveAll()
 
             bot.sendMessage(
@@ -343,48 +342,125 @@ bot.onText(/\/delete_(.+)/, async (msg, match) => {
         }
 
     } catch (e) {
-        console.error("Deletion Processing Failure:", e)
+        console.error("Disposal Fail Safe Catch:", e)
     }
 })
 
-/* PLAN COMMAND */
+/* PLAN MANAGEMENT */
 bot.onText(/\/plan/, async (msg) => {
     bot.sendMessage(msg.chat.id, `💎 *Premium Plans Slots*\n\n3D → ₹99\n7D → ₹199\n15D → ₹349\n30D → ₹599\n3M → ₹999\nLife → ₹3000`, { reply_markup: { inline_keyboard: [[{ text: "Buy Access", callback_data: "payment" }]] }, parse_mode: "Markdown" })
 })
 
-/* HELP COMMAND */
-bot.onText(/\/help/, async (msg) => {
-    bot.sendMessage(msg.chat.id, `📚 *Commands:*\n\n🔹 \`/add username\` - Add to sniper loop (Instant claim check active)\n🔹 \`/track\` - View active targeting loops\n🔹 \`/my\` - View your claimed stock\n🔹 \`/plan\` - Premium details`, { parse_mode: "Markdown" })
-})
-
-/* CALLBACKS FALLBACK & APPROVALS */
+/* CALLBACK MASTER HANDLER */
 bot.on("callback_query", async (q) => {
     try {
         const data = q.data
-        if (data.startsWith("approve_")) {
-            let targetUid = data.split("_")[1]
-            users[targetUid] = { active: true }
+        const chat_id = q.message.chat.id
+        const message_id = q.message.message_id
+
+        if (data === "payment") {
+            return bot.editMessageText(`💎 *Premium Plans Slots*\n\n3D → ₹99\n7D → ₹199\n15D → ₹349\n30D → ₹599\n3M → ₹999\nLife → ₹3000\n\n💳 *UPI ID:* \`itzrao@fam\`\n\n📸 Screenshot yahan send karein!`, { chat_id, message_id, parse_mode: "Markdown" })
+        }
+
+        // LEVEL UP: Admin activation commands sorting system
+        if (data.startsWith("p3d_")) {
+            let tUid = data.split("_")[1]
+            users[tUid] = { active: true, expiry: getExpiryTime(3) }
             saveAll()
-            await bot.sendMessage(targetUid, `✅ *Premium Activated!* Limits removed. Use: \`/add username\``, { parse_mode: "Markdown" })
-            return bot.deleteMessage(q.message.chat.id, q.message.message_id)
+            await bot.sendMessage(tUid, `✅ *Premium Plan Activated for 3 Days!*`, { parse_mode: "Markdown" })
+            return bot.editMessageCaption(`✅ Approved 3 Days for User: \`${tUid}\``, { chat_id, message_id })
         }
+
+        if (data.startsWith("p7d_")) {
+            let tUid = data.split("_")[1]
+            users[tUid] = { active: true, expiry: getExpiryTime(7) }
+            saveAll()
+            await bot.sendMessage(tUid, `✅ *Premium Plan Activated for 7 Days!*`, { parse_mode: "Markdown" })
+            return bot.editMessageCaption(`✅ Approved 7 Days for User: \`${tUid}\``, { chat_id, message_id })
+        }
+
+        if (data.startsWith("p15d_")) {
+            let tUid = data.split("_")[1]
+            users[tUid] = { active: true, expiry: getExpiryTime(15) }
+            saveAll()
+            await bot.sendMessage(tUid, `✅ *Premium Plan Activated for 15 Days!*`, { parse_mode: "Markdown" })
+            return bot.editMessageCaption(`✅ Approved 15 Days for User: \`${tUid}\``, { chat_id, message_id })
+        }
+
+        if (data.startsWith("p30d_")) {
+            let tUid = data.split("_")[1]
+            users[tUid] = { active: true, expiry: getExpiryTime(30) }
+            saveAll()
+            await bot.sendMessage(tUid, `✅ *Premium Plan Activated for 30 Days!*`, { parse_mode: "Markdown" })
+            return bot.editMessageCaption(`✅ Approved 30 Days for User: \`${tUid}\``, { chat_id, message_id })
+        }
+
+        if (data.startsWith("p3m_")) {
+            let tUid = data.split("_")[1]
+            users[tUid] = { active: true, expiry: getExpiryTime(90) }
+            saveAll()
+            await bot.sendMessage(tUid, `✅ *Premium Plan Activated for 3 Months!*`, { parse_mode: "Markdown" })
+            return bot.editMessageCaption(`✅ Approved 3 Months for User: \`${tUid}\``, { chat_id, message_id })
+        }
+
+        if (data.startsWith("plife_")) {
+            let tUid = data.split("_")[1]
+            users[tUid] = { active: true, expiry: getExpiryTime(3650) } // 10 Years
+            saveAll()
+            await bot.sendMessage(tUid, `✅ *Lifetime Premium Plan Activated!*`, { parse_mode: "Markdown" })
+            return bot.editMessageCaption(`✅ Approved Lifetime for User: \`${tUid}\``, { chat_id, message_id })
+        }
+
         if (data.startsWith("deny_")) {
-            let targetUid = data.split("_")[1]
-            await bot.sendMessage(targetUid, `❌ *Payment Declined.*`)
-            return bot.deleteMessage(q.message.chat.id, q.message.message_id)
+            let tUid = data.split("_")[1]
+            await bot.sendMessage(tUid, `❌ *Payment Declined.* Entry rejected by admin.`)
+            return bot.deleteMessage(chat_id, message_id)
         }
-    } catch (e) {}
+    } catch (e) {
+        console.error("Callback core handling crash protection:", e.message)
+    }
 })
 
-/* PHOTO HANDLER */
+/* SCREENSHOT HANDLER WITH INLINE SELECTOR CONFIGURATION */
 bot.on("photo", async (msg) => {
     try {
-        await bot.sendPhoto(OWNER_ID, msg.photo[msg.photo.length - 1].file_id, { caption: `💳 *New Premium Request*\n\n👤 Sender Identity: \`${msg.from.id}\``, parse_mode: "Markdown", reply_markup: { inline_keyboard: [[{ text: "Approve ✅", callback_data: `approve_${msg.from.id}` }, { text: "Deny ❌", callback_data: `deny_${msg.from.id}` }]] } })
-        bot.sendMessage(msg.chat.id, `📸 *Receipt delivered!*`, { parse_mode: "Markdown" })
-    } catch (e) {}
+        const senderId = msg.from.id
+        const fileId = msg.photo[msg.photo.length - 1].file_id
+
+        // Admin panel gets instant configuration keys for duration assignment
+        const adminKeyboard = {
+            inline_keyboard: [
+                [
+                    { text: "3 Days ⚡", callback_data: `p3d_${senderId}` },
+                    { text: "7 Days ⚡", callback_data: `p7d_${senderId}` }
+                ],
+                [
+                    { text: "15 Days 🔥", callback_data: `p15d_${senderId}` },
+                    { text: "30 Days 🔥", callback_data: `p30d_${senderId}` }
+                ],
+                [
+                    { text: "3 Months 👑", callback_data: `p3m_${senderId}` },
+                    { text: "Lifetime 💎", callback_data: `plife_${senderId}` }
+                ],
+                [
+                    { text: "Deny ❌", callback_data: `deny_${senderId}` }
+                ]
+            ]
+        }
+
+        await bot.sendPhoto(OWNER_ID, fileId, { 
+            caption: `💳 *New Payment Screenshot Received*\n\n👤 User ID: \`${senderId}\`\n\nSelect the exact plan to activate below:`, 
+            parse_mode: "Markdown", 
+            reply_markup: adminKeyboard 
+        })
+        
+        bot.sendMessage(msg.chat.id, `📸 *Receipt delivered successfully to Admin! Please wait for approval...*`, { parse_mode: "Markdown" })
+    } catch (e) {
+        console.error("Photo parsing module runtime error:", e.message)
+    }
 })
 
-/* HIGH-SPEED BACKGROUND SNIPER LOOP ENGINE (1-Second Interval with Auto-Remove From Track) */
+/* TIMED SCANNER CRON EXECUTION MODULE (Auto Removes From /track Queue Upon Success) */
 setInterval(async () => {
     if (monitor.length === 0) return
     if (!process.env.OWNER_SESSION) return
@@ -407,7 +483,7 @@ setInterval(async () => {
         }
 
         if (isAvailable) {
-            const client = new TelegramClient(new StringSession(process.env.OWNER_SESSION), Number(process.env.API_ID), process.env.API_HASH, { connectionRetries: 3 })
+            const client = new TelegramClient(new StringSession(process.env.OWNER_SESSION), Number(process.env.API_ID), process.env.API_HASH, { connectionRetries: 1 })
             
             try {
                 await client.connect()
@@ -439,7 +515,7 @@ setInterval(async () => {
                     dId: uniqueDeletionId
                 })
 
-                // CRITICAL FIX: Instantly slice from the active monitoring array so it clears from /track immediately!
+                // INSTANT PURGE FROM ACTIVE TRACKS LOOP QUEUE 
                 monitor.splice(i, 1)
                 saveAll()
 
@@ -449,7 +525,7 @@ setInterval(async () => {
                 await bot.sendPhoto(data.user, photoBuffer, { caption: announcementText, parse_mode: "Markdown" })
                 
             } catch (e) {
-                console.error("Loop Sniper Error:", e.message)
+                console.error("Cron Runtime Exception Blocked:", e.message)
             } finally {
                 await client.disconnect()
             }
@@ -457,10 +533,10 @@ setInterval(async () => {
     }
 }, 1000)
 
-/* FAILSAFE PROTECTION */
+/* INTEGRITY RUNTIME STABILITY LOGS */
 process.on("unhandledRejection", () => {})
 process.on("uncaughtException", () => {})
 bot.on("polling_error", () => {})
 
-console.log("🚀 BULLETPROOF INSTANT SNIPER ENGINE IS LIVE");
-                                  
+console.log("🚀 ALL FIXES ONLINE: AUTOMATED TIMED ENGINE RUNNING CLEAN");
+        
