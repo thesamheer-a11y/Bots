@@ -121,7 +121,7 @@ function generateClaimPhoto(username) {
     return canvas.toBuffer("image/png")
 }
 
-/* HIGH-SPEED CLAIM ENGINE */
+/* HIGH-SPEED CLAIM ENGINE (WITH 1-MINUTE DELAYED NOTIFICATION MODULE) */
 async function executeClaim(username, userId) {
     if (!mtProtoClient || !mtProtoClient.connected) return false;
     
@@ -154,11 +154,18 @@ async function executeClaim(username, userId) {
         })
         saveAll()
 
-        const photoBuffer = generateClaimPhoto(username)
-        const announcementText = `🔥 *BOOM! INSTANTLY SNIPED BY @${BOT_USERNAME}* 🔥\n\n👑 *Status:* SUCCESSFULLY SECURED\n🎯 *Username:* @${username}\n\n📦 *Ownership Note:* Check your claimed stock using \`/my\` to instantly release and grab this username!`
+        // CRITICAL FIX: Claim instantly ho gaya hai, par notification system 1 minute (60000ms) baad chalega taaki crash na ho.
+        setTimeout(async () => {
+            try {
+                const photoBuffer = generateClaimPhoto(username)
+                const announcementText = `🔥 *BOOM! USERNAME SNIPED BY @${BOT_USERNAME}* 🔥\n\n👑 *Status:* SUCCESSFULLY SECURED\n🎯 *Username:* @${username}\n\n📦 *Ownership Note:* Check your claimed stock using \`/my\` to instantly release and grab this username!`
+                
+                await bot.sendPhoto(userId, photoBuffer, { caption: announcementText, parse_mode: "Markdown" }).catch(() => {});
+            } catch (mediaErr) {
+                console.error("Delayed notification rendering alert:", mediaErr.message)
+            }
+        }, 60000);
 
-        // Fix parameters order for proper media delivery
-        await bot.sendPhoto(userId, photoBuffer, { caption: announcementText, parse_mode: "Markdown" }).catch(() => {});
         return true
     } catch (e) {
         console.error(`Sniper Execution Failure for @${username}:`, e.message)
@@ -494,7 +501,6 @@ async function dynamicScannerLoop() {
                         saveAll()
                     }
                 }
-                // Rate limiting protection gap
                 await new Promise(resolve => setTimeout(resolve, 350));
             }
         }
@@ -523,10 +529,16 @@ async function initializeSystem() {
     dynamicScannerLoop();
 }
 
-/* INTEGRITY RUNTIME STABILITY LOGS */
-process.on("unhandledRejection", () => {})
-process.on("uncaughtException", () => {})
-bot.on("polling_error", () => {})
+/* CRASH SE PROTECTION (Iske bina bot crash hota hai) */
+process.on("unhandledRejection", (reason, promise) => {
+    console.error("Unhandled Rejection unprevented:", reason);
+})
+process.on("uncaughtException", (err) => {
+    console.error("Uncaught Exception caught clean:", err.message);
+})
+bot.on("polling_error", (error) => {
+    // Polling errors ko silently catch karega bina bot band kiye
+})
 
 initializeSystem();
-            
+    
