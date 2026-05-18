@@ -1,16 +1,65 @@
 require("dotenv").config()
 
 const TelegramBot = require("node-telegram-bot-api")
+const fs = require("fs")
 
 const bot = new TelegramBot(process.env.BOT_TOKEN, {
 polling: true
 })
 
-const OWNER_ID = 8715707181
+const OWNER_ID = "8715707181"
 
-let users = {}
-let monitor = []
-let owned = []
+/* DATABASE */
+
+let users = fs.existsSync("users.json")
+? JSON.parse(fs.readFileSync("users.json"))
+: {}
+
+let monitor = fs.existsSync("monitor.json")
+? JSON.parse(fs.readFileSync("monitor.json"))
+: []
+
+let owned = fs.existsSync("owned.json")
+? JSON.parse(fs.readFileSync("owned.json"))
+: []
+
+let freeUsers = fs.existsSync("freeUsers.json")
+? JSON.parse(fs.readFileSync("freeUsers.json"))
+: {}
+
+/* SAVE */
+
+function saveData(){
+
+fs.writeFileSync(
+"users.json",
+JSON.stringify(users,null,2)
+)
+
+fs.writeFileSync(
+"monitor.json",
+JSON.stringify(monitor,null,2)
+)
+
+fs.writeFileSync(
+"owned.json",
+JSON.stringify(owned,null,2)
+)
+
+fs.writeFileSync(
+"freeUsers.json",
+JSON.stringify(freeUsers,null,2)
+)
+
+}
+
+/* PREMIUM CHECK */
+
+function isPremium(id){
+
+return users[id] && users[id].active
+
+}
 
 /* START */
 
@@ -18,25 +67,57 @@ bot.onText(/\/start/, async (msg) => {
 
 bot.sendMessage(
 msg.chat.id,
-`🚀 Welcome To Username Manager Bot
+`PREMIUM USERNAME MANAGER
 
-⚡ Features:
-• Username Monitoring
-• Transfer System
-• Premium Plans
-• Instant Alerts
+━━━━━━━━━━━━━━━━━━
 
-💎 Use /plan To Buy Premium`,
+Professional Username
+Monitoring & Claim System
+
+━━━━━━━━━━━━━━━━━━
+
+FEATURES
+
+• Rare Username Monitoring
+• Username Availability Alerts
+• Username Transfer System
+• Free & Premium Plans
+• Secure Database
+• Fast Monitoring System
+
+━━━━━━━━━━━━━━━━━━
+
+PLAN INFORMATION
+
+Free Users
+• 1 Username Monitoring
+
+Premium Users
+• Unlimited Monitoring
+• Faster Alerts
+• Premium Features
+
+━━━━━━━━━━━━━━━━━━
+
+SYSTEM STATUS
+
+• Monitoring Online
+• Database Connected
+• Alert System Active
+
+━━━━━━━━━━━━━━━━━━
+
+Select Your Preferred Language.`,
 {
 reply_markup: {
 inline_keyboard: [
 [
 {
-text: "🇮🇳 Hindi",
+text: "Hindi",
 callback_data: "hindi"
 },
 {
-text: "🇬🇧 English",
+text: "English",
 callback_data: "english"
 }
 ]
@@ -47,26 +128,204 @@ callback_data: "english"
 
 })
 
-/* LANGUAGE */
+/* CALLBACK */
 
 bot.on("callback_query", async (q) => {
 
 const data = q.data
 
+/* HINDI */
+
 if(data == "hindi"){
 
-bot.sendMessage(
-q.message.chat.id,
-"🤖 Bot Use Karne Ke Liye Premium Plan Zaruri Hai\n\nUse : /plan"
+bot.editMessageText(
+`प्रीमियम यूजरनेम मैनेजर
+
+━━━━━━━━━━━━━━━━━━
+
+प्रोफेशनल यूजरनेम
+मॉनिटरिंग सिस्टम
+
+━━━━━━━━━━━━━━━━━━
+
+फीचर्स
+
+• रेयर यूजरनेम मॉनिटरिंग
+• इंस्टेंट अलर्ट
+• यूजरनेम ट्रांसफर
+• फ्री और प्रीमियम प्लान
+• सिक्योर सिस्टम
+
+━━━━━━━━━━━━━━━━━━
+
+फ्री यूजर
+• सिर्फ 1 यूजरनेम
+
+प्रीमियम यूजर
+• अनलिमिटेड मॉनिटरिंग
+
+━━━━━━━━━━━━━━━━━━
+
+प्लान देखने के लिए:
+/plan`,
+{
+chat_id: q.message.chat.id,
+message_id: q.message.message_id
+}
 )
 
 }
 
+/* ENGLISH */
+
 if(data == "english"){
 
-bot.sendMessage(
-q.message.chat.id,
-"🤖 Premium Plan Required\n\nUse : /plan"
+bot.editMessageText(
+`PREMIUM USERNAME MANAGER
+
+━━━━━━━━━━━━━━━━━━
+
+Professional Username
+Monitoring System
+
+━━━━━━━━━━━━━━━━━━
+
+FEATURES
+
+• Rare Username Monitoring
+• Instant Alerts
+• Username Transfers
+• Free & Premium Plans
+• Secure Database
+
+━━━━━━━━━━━━━━━━━━
+
+FREE USERS
+• 1 Username Monitoring
+
+PREMIUM USERS
+• Unlimited Monitoring
+
+━━━━━━━━━━━━━━━━━━
+
+To View Plans:
+/plan`,
+{
+chat_id: q.message.chat.id,
+message_id: q.message.message_id
+}
+)
+
+}
+
+/* PAYMENT PAGE */
+
+if(data == "make_payment"){
+
+bot.editMessageText(
+`PREMIUM MEMBERSHIP
+
+━━━━━━━━━━━━━━━━━━
+
+AVAILABLE PLANS
+
+₹99   → 3 Days
+₹199  → 7 Days
+₹349  → 15 Days
+₹599  → 30 Days
+₹999  → 3 Months
+₹1799 → 6 Months
+₹3000 → Lifetime
+
+━━━━━━━━━━━━━━━━━━
+
+PAYMENT METHOD
+
+UPI ID:
+\`itzrao@fam\`
+
+━━━━━━━━━━━━━━━━━━
+
+After Payment:
+
+1. Send Screenshot
+2. Send Selected Plan
+
+Example:
+Paid ₹599 For Professional Plan
+
+━━━━━━━━━━━━━━━━━━
+
+Manager Usually Responds Quickly.`,
+{
+chat_id: q.message.chat.id,
+message_id: q.message.message_id,
+parse_mode: "Markdown",
+reply_markup: {
+inline_keyboard: [
+[
+{
+text: "Back",
+callback_data: "back_plan"
+}
+]
+]
+}
+}
+)
+
+}
+
+/* BACK */
+
+if(data == "back_plan"){
+
+bot.editMessageText(
+`PREMIUM MEMBERSHIP
+
+━━━━━━━━━━━━━━━━━━
+
+Starter Plan
+• 3 Days Access
+• ₹99
+
+Basic Plan
+• 7 Days Access
+• ₹199
+
+Advanced Plan
+• 15 Days Access
+• ₹349
+
+Professional Plan
+• 30 Days Access
+• ₹599
+
+Enterprise Plan
+• 3 Months Access
+• ₹999
+
+Ultimate Plan
+• 6 Months Access
+• ₹1799
+
+Lifetime Plan
+• Permanent Access
+• ₹3000`,
+{
+chat_id: q.message.chat.id,
+message_id: q.message.message_id,
+reply_markup: {
+inline_keyboard: [
+[
+{
+text: "Make Payment",
+callback_data: "make_payment"
+}
+]
+]
+}
+}
 )
 
 }
@@ -81,10 +340,50 @@ users[userId] = {
 active: true
 }
 
-bot.sendMessage(
+saveData()
+
+await bot.sendMessage(
 userId,
-"✅ Payment Approved\n\n🎉 Subscription Activated"
+`PAYMENT APPROVED
+
+━━━━━━━━━━━━━━━━━━
+
+Premium Membership Activated Successfully.
+
+You Now Have:
+• Unlimited Monitoring
+• Premium Features
+• Faster Alerts
+
+Use /help To Continue.`
 )
+
+await bot.editMessageCaption(
+`PAYMENT APPROVED
+
+User ID:
+${userId}
+
+Status:
+Premium Activated`,
+{
+chat_id: q.message.chat.id,
+message_id: q.message.message_id
+}
+)
+
+setTimeout(async()=>{
+
+try{
+
+await bot.deleteMessage(
+q.message.chat.id,
+q.message.message_id
+)
+
+}catch(e){}
+
+},2000)
 
 }
 
@@ -94,10 +393,43 @@ if(data.startsWith("deny_")){
 
 let userId = data.split("_")[1]
 
-bot.sendMessage(
+await bot.sendMessage(
 userId,
-"❌ Payment Declined"
+`PAYMENT DECLINED
+
+━━━━━━━━━━━━━━━━━━
+
+Payment Could Not Be Verified.
+
+Please Send Clear Screenshot Again.`
 )
+
+await bot.editMessageCaption(
+`PAYMENT DECLINED
+
+User ID:
+${userId}
+
+Status:
+Declined`,
+{
+chat_id: q.message.chat.id,
+message_id: q.message.message_id
+}
+)
+
+setTimeout(async()=>{
+
+try{
+
+await bot.deleteMessage(
+q.message.chat.id,
+q.message.message_id
+)
+
+}catch(e){}
+
+},2000)
 
 }
 
@@ -112,13 +444,66 @@ let target = split[2]
 
 bot.sendMessage(
 q.message.chat.id,
-`✅ Transfer Started
+`TRANSFER PROCESS STARTED
 
-👤 Username : @${username}
-🆔 User : ${target}`
+━━━━━━━━━━━━━━━━━━
+
+Username:
+@${username}
+
+Target:
+${target}
+
+Status:
+Processing`
 )
 
 }
+
+})
+
+/* FREE PLAN */
+
+bot.onText(/\/free/, async (msg) => {
+
+bot.sendMessage(
+msg.chat.id,
+`FREE PLAN
+
+━━━━━━━━━━━━━━━━━━
+
+FEATURES
+
+• 1 Username Monitoring
+• Basic Alerts
+• Standard Access
+
+━━━━━━━━━━━━━━━━━━
+
+PREMIUM BENEFITS
+
+• Unlimited Monitoring
+• Faster Alerts
+• Username Transfers
+• Premium Features
+
+━━━━━━━━━━━━━━━━━━
+
+Upgrade To Premium
+For Full Access.`,
+{
+reply_markup: {
+inline_keyboard: [
+[
+{
+text: "Upgrade Premium",
+callback_data: "make_payment"
+}
+]
+]
+}
+}
+)
 
 })
 
@@ -128,44 +513,83 @@ bot.onText(/\/plan/, async (msg) => {
 
 bot.sendMessage(
 msg.chat.id,
-`💎 Premium Plans
+`PREMIUM MEMBERSHIP
 
-₹99 → 3 Days
-₹199 → 7 Days
-₹349 → 15 Days
-₹599 → 30 Days
-₹999 → 3 Months
-₹1799 → 6 Months
-₹3000 → Permanent
+━━━━━━━━━━━━━━━━━━
 
-💳 UPI : itzrao@fam
+Starter Plan
+• 3 Days Access
+• ₹99
 
-📤 Send Payment Screenshot`
-)
+Basic Plan
+• 7 Days Access
+• ₹199
 
-})
+Advanced Plan
+• 15 Days Access
+• ₹349
 
-/* PHOTO */
+Professional Plan
+• 30 Days Access
+• ₹599
 
-bot.on("photo", async (msg) => {
+Enterprise Plan
+• 3 Months Access
+• ₹999
 
-bot.sendPhoto(
-OWNER_ID,
-msg.photo[msg.photo.length - 1].file_id,
+Ultimate Plan
+• 6 Months Access
+• ₹1799
+
+Lifetime Plan
+• Permanent Access
+• ₹3000`,
 {
-caption:
-`💸 New Payment
-
-👤 User : ${msg.from.id}`,
 reply_markup: {
 inline_keyboard: [
 [
 {
-text: "✅ Approve",
+text: "Make Payment",
+callback_data: "make_payment"
+}
+]
+]
+}
+}
+)
+
+})
+
+/* PAYMENT SCREENSHOT */
+
+bot.on("photo", async (msg) => {
+
+await bot.sendPhoto(
+OWNER_ID,
+msg.photo[msg.photo.length - 1].file_id,
+{
+caption:
+`NEW PAYMENT REQUEST
+
+━━━━━━━━━━━━━━━━━━
+
+User ID:
+${msg.from.id}
+
+Username:
+@${msg.from.username || "No Username"}
+
+Name:
+${msg.from.first_name}`,
+reply_markup: {
+inline_keyboard: [
+[
+{
+text: "Approve",
 callback_data: `approve_${msg.from.id}`
 },
 {
-text: "❌ Deny",
+text: "Deny",
 callback_data: `deny_${msg.from.id}`
 }
 ]
@@ -176,7 +600,9 @@ callback_data: `deny_${msg.from.id}`
 
 bot.sendMessage(
 msg.chat.id,
-"📨 Screenshot Sent To Manager"
+`PAYMENT SCREENSHOT SUBMITTED
+
+Please Wait For Verification.`
 )
 
 })
@@ -185,17 +611,121 @@ msg.chat.id,
 
 bot.onText(/\/add (.+)/, async (msg, match) => {
 
-if(msg.from.id != OWNER_ID) return
-
 let username = match[1]
+.replace("@","")
+.trim()
+.toLowerCase()
+
+/* PREMIUM USER */
+
+if(isPremium(msg.from.id)){
+
+if(monitor.includes(username)){
+
+return bot.sendMessage(
+msg.chat.id,
+`USERNAME ALREADY EXISTS
+
+@${username} Is Already Under Monitoring.`
+)
+
+}
 
 monitor.push(username)
 
+saveData()
+
+return bot.sendMessage(
+msg.chat.id,
+`PREMIUM MONITORING ACTIVATED
+
+━━━━━━━━━━━━━━━━━━
+
+Username:
+@${username}
+
+Plan:
+Premium Unlimited
+
+Status:
+Monitoring Enabled`
+)
+
+}
+
+/* FREE USER */
+
+if(!freeUsers[msg.from.id]){
+
+freeUsers[msg.from.id] = []
+
+}
+
+if(freeUsers[msg.from.id].length >= 1){
+
+return bot.sendMessage(
+msg.chat.id,
+`FREE PLAN LIMIT REACHED
+
+━━━━━━━━━━━━━━━━━━
+
+Free Users Can Monitor
+Only 1 Username.
+
+Premium Users Get:
+• Unlimited Monitoring
+• Faster Alerts
+• Premium Features
+
+Use:
+/plan`,
+{
+reply_markup: {
+inline_keyboard: [
+[
+{
+text: "Upgrade Premium",
+callback_data: "make_payment"
+}
+]
+]
+}
+}
+)
+
+}
+
+if(monitor.includes(username)){
+
+return bot.sendMessage(
+msg.chat.id,
+`USERNAME ALREADY EXISTS
+
+@${username} Is Already Under Monitoring.`
+)
+
+}
+
+monitor.push(username)
+
+freeUsers[msg.from.id].push(username)
+
+saveData()
+
 bot.sendMessage(
 msg.chat.id,
-`✅ Monitoring Started
+`FREE MONITORING ACTIVATED
 
-👤 ${username}`
+━━━━━━━━━━━━━━━━━━
+
+Username:
+@${username}
+
+Plan:
+Free Plan
+
+Limit:
+1 Username Only`
 )
 
 })
@@ -204,19 +734,23 @@ msg.chat.id,
 
 bot.onText(/\/who/, async (msg) => {
 
-if(msg.from.id != OWNER_ID) return
+if(String(msg.from.id) != OWNER_ID) return
 
 if(monitor.length == 0){
+
 return bot.sendMessage(
 msg.chat.id,
-"No Usernames"
+"No Usernames In Monitoring."
 )
+
 }
 
-let text = "👀 Monitoring:\n\n"
+let text = "MONITORING LIST\n\n"
 
 monitor.forEach((u,i)=>{
-text += `${i+1}. ${u}\n`
+
+text += `${i+1}. @${u}\n`
+
 })
 
 bot.sendMessage(msg.chat.id,text)
@@ -227,19 +761,23 @@ bot.sendMessage(msg.chat.id,text)
 
 bot.onText(/\/list/, async (msg) => {
 
-if(msg.from.id != OWNER_ID) return
+if(String(msg.from.id) != OWNER_ID) return
 
 if(owned.length == 0){
+
 return bot.sendMessage(
 msg.chat.id,
-"No Owned Usernames"
+"No Claimed Usernames."
 )
+
 }
 
-let text = "📦 Owned:\n\n"
+let text = "CLAIMED USERNAMES\n\n"
 
 owned.forEach((u,i)=>{
-text += `${i+1}. ${u}\n`
+
+text += `${i+1}. @${u}\n`
+
 })
 
 bot.sendMessage(msg.chat.id,text)
@@ -250,6 +788,30 @@ bot.sendMessage(msg.chat.id,text)
 
 bot.onText(/\/transfer (.+)/, async (msg, match) => {
 
+if(!isPremium(msg.from.id)){
+
+return bot.sendMessage(
+msg.chat.id,
+`PREMIUM REQUIRED
+
+Username Transfer Is Available
+Only For Premium Users.`,
+{
+reply_markup: {
+inline_keyboard: [
+[
+{
+text: "Upgrade Premium",
+callback_data: "make_payment"
+}
+]
+]
+}
+}
+)
+
+}
+
 let target = match[1]
 
 let keyboard = []
@@ -257,6 +819,7 @@ let keyboard = []
 for(let i=0;i<owned.length;i+=5){
 
 keyboard.push(
+
 owned
 .slice(i,i+5)
 .map(x => ({
@@ -264,13 +827,14 @@ text: x,
 callback_data:
 `transfer_${x}_${target}`
 }))
+
 )
 
 }
 
 bot.sendMessage(
 msg.chat.id,
-"📦 Select Username",
+"SELECT USERNAME",
 {
 reply_markup: {
 inline_keyboard: keyboard
@@ -286,17 +850,110 @@ bot.onText(/\/help/, async (msg) => {
 
 bot.sendMessage(
 msg.chat.id,
-`📚 Commands
+`COMMAND PANEL
+
+━━━━━━━━━━━━━━━━━━
+
+USER COMMANDS
 
 /start
+Start Bot
+
+/free
+View Free Plan
+
 /plan
-/add
-/who
-/list
+View Premium Plans
+
+/add username
+Start Monitoring
+
 /transfer
-/help`
+Transfer Username
+
+/help
+Open Command List
+
+━━━━━━━━━━━━━━━━━━
+
+ADMIN COMMANDS
+
+/add username
+Add Username
+
+/who
+Monitoring List
+
+/list
+Claimed Usernames
+
+━━━━━━━━━━━━━━━━━━
+
+SYSTEM STATUS
+
+• Monitoring Online
+• Database Connected
+• Premium System Active`
 )
 
+})
+
+/* USERNAME CHECKER */
+
+setInterval(async () => {
+
+for(let username of monitor){
+
+try{
+
+await bot.getChat("@" + username)
+
+}catch(err){
+
+if(
+err.response &&
+err.response.body.description
+.includes("chat not found")
+){
+
+if(!owned.includes(username)){
+
+owned.push(username)
+
+saveData()
+
+bot.sendMessage(
+OWNER_ID,
+`USERNAME AVAILABLE
+
+━━━━━━━━━━━━━━━━━━
+
+@${username}
+
+Status:
+Available To Claim`
+)
+
+}
+
+}
+
+}
+
+}
+
+},5000)
+
+/* ERROR HANDLER */
+
+bot.on("polling_error", console.log)
+
+process.on("unhandledRejection", (err) => {
+console.log(err)
+})
+
+process.on("uncaughtException", (err) => {
+console.log(err)
 })
 
 console.log("BOT STARTED")
