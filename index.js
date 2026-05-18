@@ -15,13 +15,13 @@ const bot = new TelegramBot(
     {
         polling: {
             autoStart: true,
-            interval: 100 // Ultrafast response for commands
+            interval: 300
         }
     }
 )
 
 const OWNER_ID = "8715707181"
-const BOT_USERNAME = "userownerbot" // Aapke channel/bot ka credit handler
+const BOT_USERNAME = "userownerbot" 
 
 /* SAFE JSON LOAD */
 function loadJSON(file, def) {
@@ -40,7 +40,7 @@ function loadJSON(file, def) {
 /* DATABASE */
 let users = loadJSON("users.json", {})
 let monitor = loadJSON("monitor.json", [])
-let owned = loadJSON("owned.json", [])
+let owned = loadJSON("owned.json", []) 
 let freeUsers = loadJSON("freeUsers.json", {})
 
 /* SAVE DATA */
@@ -70,30 +70,25 @@ function generateClaimPhoto(username) {
     const canvas = createCanvas(width, height)
     const ctx = canvas.getContext("2d")
 
-    // Luxury Dark/Neon Gradient Background
     const gradient = ctx.createLinearGradient(0, 0, width, height)
     gradient.addColorStop(0, "#090d16") 
     gradient.addColorStop(1, "#111827") 
     ctx.fillStyle = gradient
     ctx.fillRect(0, 0, width, height)
 
-    // Tech matrix glow
     ctx.fillStyle = "rgba(34, 197, 94, 0.08)"
     ctx.beginPath()
     ctx.arc(width/2, height/2, 200, 0, Math.PI * 2)
     ctx.fill()
 
-    // Title Badge
     ctx.fillStyle = "#22c55e" 
     ctx.font = "bold 30px sans-serif"
     ctx.fillText("⚡ TARGET SNIPED SUCCESSFULLY", 60, 120)
 
-    // Main Claimed Username
     ctx.fillStyle = "#ffffff"
     ctx.font = "bold 60px sans-serif"
     ctx.fillText(`@${username}`, 60, 230)
 
-    // Divider Line
     ctx.strokeStyle = "rgba(34, 197, 94, 0.2)"
     ctx.lineWidth = 3
     ctx.beginPath()
@@ -101,7 +96,6 @@ function generateClaimPhoto(username) {
     ctx.lineTo(width - 60, 290)
     ctx.stroke()
 
-    // Powered By Channel Footer
     ctx.fillStyle = "#94a3b8" 
     ctx.font = "22px sans-serif"
     ctx.fillText("Powered by", 60, 350)
@@ -113,7 +107,7 @@ function generateClaimPhoto(username) {
     return canvas.toBuffer("image/png")
 }
 
-/* START COMMAND (Asli Work Content Fixed) */
+/* START COMMAND */
 bot.onText(/\/start/, async (msg) => {
     bot.sendMessage(
         msg.chat.id,
@@ -127,7 +121,8 @@ Yeh ek ultra-fast username sniper bot hai. Jab bhi koi premium, radd, ya short u
 👤 Free Slots: 1 Target
 💎 Premium Slots: Unlimited Targets
 
-🎯 Target lagane ke liye abhi use karein: \`/add username\``,
+🎯 Target lagane ke liye abhi use karein: \`/add username\`
+📦 Apne claimed username ko lene ke liye: \`/transfer\``,
         {
             parse_mode: "Markdown",
             reply_markup: {
@@ -149,89 +144,128 @@ Yeh ek ultra-fast username sniper bot hai. Jab bhi koi premium, radd, ya short u
 bot.on("callback_query", async (q) => {
     try {
         const data = q.data
+        const userId = q.from.id
 
         if (data === "lang_hindi") {
-            return bot.editMessageText(
-                `🚀 *ऑटो यूजरनेम क्लेम बॉट में आपका स्वागत है*
-
-⚡ *यह बॉट क्या काम करता है?*
-यह एक अल्ट्रा-फास्ट यूजरनेम स्निपर बॉट है। जैसे ही कोई भी यूजरनेम खाली या फ्री होता है, यह बॉट उसे पलक झपकते ही खुद-ब-खुद क्लेम और सिक्योर कर लेता है!
-
-🎯 अपना टारगेट सेट करने के लिए टाइप करें: \`/add username\``,
-                {
-                    chat_id: q.message.chat.id,
-                    message_id: q.message.message_id,
-                    parse_mode: "Markdown",
-                    reply_markup: {
-                        inline_keyboard: [
-                            [
-                                { text: "🇮🇳 Hindi", callback_data: "lang_hindi" },
-                                { text: "🇵🇰 Punjabi", callback_data: "lang_punjabi" }
-                            ],
-                            [
-                                { text: "💎 प्लान्स", callback_data: "payment" }
-                            ]
-                        ]
-                    }
-                }
-            )
+            return bot.editMessageText(`🚀 *ऑटो यूजरनेम क्लेम बॉट में आपका स्वागत है*\n\n⚡ *यह बॉट क्या काम करता है?*\nयह एक अब्दुल-फास्ट यूजरनेम स्निपर बॉट है। जैसे ही कोई भी यूजरनेम खाली या फ्री होता है, यह बॉट उसे पलक झपकते ही खुद-ब-खुद क्लेम और सिक्योर कर लेता है!\n\n🎯 अपना टारगेट सेट करने के लिए टाइप करें: \`/add username\``, { chat_id: q.message.chat.id, message_id: q.message.message_id, parse_mode: "Markdown" })
         }
 
         if (data === "lang_punjabi") {
-            return bot.editMessageText(
-                `🚀 *ਆਟੋ ਯੂਜ਼ਰਨੇਮ ਕਲੇਮ ਬੋਟ ਵਿੱਚ ਤੁਹਾਡਾ ਸਵਾਗਤ ਹੈ*
-
-⚡ *ਇਹ ਬੋਟ ਕੀ ਕੰਮ ਕਰਦਾ ਹੈ?*
-ਜਿਵੇਂ ਹੀ ਕੋਈ ਵੀ ਯੂਜ਼ਰਨੇਮ ਖਾਲੀ ਜਾਂ ਫ੍ਰੀ ਹੁੰਦਾ ਹੈ, ਇਹ ਬੋਟ ਮਿਲੀ-ਸੈਕਿੰਡ ਦੇ ਅੰਦਰ ਉਸਨੂੰ ਆਪਣੇ ਆਪ ਕਲੇਮ ਕਰ ਲੈਂਦਾ ਹੈ!
-
-🎯 ਟਾਰਗੇਟ ਲਗਾਉਣ ਲਈ ਲਿਖੋ: \`/add username\``,
-                {
-                    chat_id: q.message.chat.id,
-                    message_id: q.message.message_id,
-                    parse_mode: "Markdown",
-                    reply_markup: {
-                        inline_keyboard: [
-                            [
-                                { text: "🇮🇳 Hindi", callback_data: "lang_hindi" },
-                                { text: "🇵🇰 Punjabi", callback_data: "lang_punjabi" }
-                            ],
-                            [
-                                { text: "💎 Plans", callback_data: "payment" }
-                            ]
-                        ]
-                    }
-                }
-            )
+            return bot.editMessageText(`🚀 *ਆਟੋ ਯੂਜ਼ਰਨੇਮ ਕਲੇਮ ਬੋਟ ਵਿੱਚ ਤੁਹਾਡਾ ਸਵਾਗਤ ਹੈ*\n\n⚡ *ਇਹ ਬੋਟ ਕੀ ਕੰਮ ਕਰਦਾ ਹੈ?*\nਜਿਵੇਂ ਹੀ ਕੋਈ ਵੀ ਯੂਜ਼ਰਨੇਮ ਖਾਲੀ ਜਾਂ ਫ੍ਰੀ ਹੁੰਦਾ ਹੈ, ਇਹ ਬੋਟ ਮਿਲੀ-ਸੈਕਿੰਡ ਦੇ ਅੰਦਰ ਉਸਨੂੰ ਆਪਣੇ ਆਪ ਕਲੇਮ ਕਰ ਲੈਂਦਾ ਹੈ!\n\n🎯 ਟਾਰਗੇਟ ਲਗਾਉਣ ਲਈ ਲਿਖੋ: \`/add username\``, { chat_id: q.message.chat.id, message_id: q.message.message_id, parse_mode: "Markdown" })
         }
 
         if (data === "payment") {
-            return bot.editMessageText(
-                `💎 *Premium Plans Slots*\n\n3D → ₹99\n7D → ₹199\n15D → ₹349\n30D → ₹599\n3M → ₹999\nLife → ₹3000\n\n💳 *UPI ID:* \`itzrao@fam\`\n\n📸 Screenshot yahan send karein!`,
-                {
-                    chat_id: q.message.chat.id,
-                    message_id: q.message.message_id,
-                    parse_mode: "Markdown"
-                }
-            )
+            return bot.editMessageText(`💎 *Premium Plans Slots*\n\n3D → ₹99\n7D → ₹199\n15D → ₹349\n30D → ₹599\n3M → ₹999\nLife → ₹3000\n\n💳 *UPI ID:* \`itzrao@fam\`\n\n📸 Screenshot yahan send karein!`, { chat_id: q.message.chat.id, message_id: q.message.message_id, parse_mode: "Markdown" })
         }
 
         if (data.startsWith("approve_")) {
-            let userId = data.split("_")[1]
-            users[userId] = { active: true }
+            let targetUid = data.split("_")[1]
+            users[targetUid] = { active: true }
             saveAll()
-
-            await bot.sendMessage(userId, `✅ *Premium Activated!* Limits removed. Use: \`/add username\``, { parse_mode: "Markdown" })
+            await bot.sendMessage(targetUid, `✅ *Premium Activated!* Limits removed. Use: \`/add username\``, { parse_mode: "Markdown" })
             return bot.deleteMessage(q.message.chat.id, q.message.message_id)
         }
 
         if (data.startsWith("deny_")) {
-            let userId = data.split("_")[1]
-            await bot.sendMessage(userId, `❌ *Payment Declined.*`)
+            let targetUid = data.split("_")[1]
+            await bot.sendMessage(targetUid, `❌ *Payment Declined.*`)
             return bot.deleteMessage(q.message.chat.id, q.message.message_id)
         }
 
+        /* TRANSFER FLOW CALLBACK */
+        if (data.startsWith("trf_")) {
+            const targetUsername = data.split("_")[1]
+            const record = owned.find(x => x.username === targetUsername && x.claimedBy === userId)
+
+            if (!record) {
+                return bot.answerCallbackQuery(q.id, { text: "❌ Record Not Found!", show_alert: true })
+            }
+
+            await bot.answerCallbackQuery(q.id, { text: "⚡ Processing Transfer..." })
+
+            const client = new TelegramClient(new StringSession(process.env.OWNER_SESSION), Number(process.env.API_ID), process.env.API_HASH, { connectionRetries: 3 })
+            await client.connect()
+
+            try {
+                const inviteLinkObj = await client.invoke(
+                    new Api.messages.ExportChatInvite({
+                        peer: record.channelId,
+                        title: "Transfer Link"
+                    })
+                )
+
+                const channelInviteLink = inviteLinkObj.link
+
+                await bot.sendMessage(
+                    userId,
+                    `🔗 *Step 1:* Pehle is private invitation link par click karke channel join kijiye:\n\n${channelInviteLink}\n\n*Step 2:* Join karne ke baad niche diye gaye validation button par click karein ownership transfer complete karne ke liye.`,
+                    {
+                        parse_mode: "Markdown",
+                        reply_markup: {
+                            inline_keyboard: [[{ text: "Confirm Joined & Transfer Ownership 👑", callback_data: `conf_trf_${targetUsername}` }]]
+                        }
+                    }
+                )
+            } catch (err) {
+                await bot.sendMessage(userId, `❌ Transfer processing error: ${err.message}`)
+            } finally {
+                await client.disconnect()
+            }
+        }
+
+        /* CONFIRM TRANSFER EXECUTION */
+        if (data.startsWith("conf_trf_")) {
+            const targetUsername = data.split("_")[1]
+            const record = owned.find(x => x.username === targetUsername && x.claimedBy === userId)
+
+            if (!record) return;
+
+            const client = new TelegramClient(new StringSession(process.env.OWNER_SESSION), Number(process.env.API_ID), process.env.API_HASH, { connectionRetries: 3 })
+            await client.connect()
+
+            try {
+                await client.invoke(
+                    new Api.channels.EditAdmin({
+                        channel: record.channelId,
+                        userId: String(userId),
+                        adminRights: new Api.chatAdminRights({
+                            changeInfo: true,
+                            postMessages: true,
+                            editMessages: true,
+                            deleteMessages: true,
+                            banUsers: true,
+                            inviteUsers: true,
+                            pinMessages: true,
+                            addAdmins: true,
+                            anonymous: false,
+                            manageCall: true,
+                            other: true
+                        }),
+                        rank: "New Owner"
+                    })
+                )
+
+                await client.invoke(
+                    new Api.channels.UpdateOwner({
+                        channel: record.channelId,
+                        newOwner: String(userId),
+                        password: new Api.InputCheckPasswordEmpty()
+                    })
+                )
+
+                owned = owned.filter(x => x.username !== targetUsername)
+                saveAll()
+
+                await bot.sendMessage(userId, `👑 *SUCCESSAL OWNERSHIP HANDOVER COMPLETE!*\n\n@${targetUsername} channel ki complete creator ownership aapke account par successfully transfer kar di gayi hai!`)
+            } catch (err) {
+                await bot.sendMessage(userId, `⚠️ *Transfer Error:* ${err.message}\n\nAgar aapne channel join nahi kiya hai, to pehle join karein aur dubara button dabayein!`)
+            } finally {
+                await client.disconnect()
+            }
+        }
+
     } catch (e) {
-        console.error("Callback Error:", e)
+        console.error("Callback Core Error:", e)
     }
 })
 
@@ -241,9 +275,7 @@ bot.onText(/\/add (.+)/, async (msg, match) => {
         let username = match[1].replace("@", "").trim().toLowerCase()
 
         if (!isPremium(msg.from.id) && String(msg.from.id) !== OWNER_ID) {
-            if (!freeUsers[msg.from.id]) {
-                freeUsers[msg.from.id] = []
-            }
+            if (!freeUsers[msg.from.id]) freeUsers[msg.from.id] = []
             if (freeUsers[msg.from.id].length >= 1) {
                 return bot.sendMessage(msg.chat.id, `⚠️ *Free Limit Reached!*\n\nUpgrade slots limit here -> /plan`, { parse_mode: "Markdown" })
             }
@@ -255,145 +287,188 @@ bot.onText(/\/add (.+)/, async (msg, match) => {
             return bot.sendMessage(msg.chat.id, `⚠️ This username is already in our high-speed sniper loop.`)
         }
 
-        monitor.push({ user: msg.from.id, username: username })
+        // Generate a random ID between 1 and 1000 for deletion routing mapping
+        let randomId = Math.floor(Math.random() * 1000) + 1
+        
+        monitor.push({ user: msg.from.id, username: username, dId: randomId })
         saveAll()
 
-        bot.sendMessage(msg.chat.id, `🎯 *Target Hooked Successfully!*\n\nBot sniper engine is now watching: *@${username}*\nChecking every second for absolute execution.`, { parse_mode: "Markdown" })
+        bot.sendMessage(msg.chat.id, `🎯 *Target Hooked Successfully!*\n\nBot sniper engine is now watching: *@${username}*`, { parse_mode: "Markdown" })
     } catch (e) {
         console.error("Add Command Error:", e)
     }
 })
 
-/* USER TRACKS STATUS */
+/* MY COMMAND (With Instant Tap Delete Command Tags) */
 bot.onText(/\/my/, async (msg) => {
-    const myTargets = monitor.filter(x => x.user === msg.from.id).map(x => `@${x.username}`)
+    const userId = msg.from.id
+    const myTargets = monitor.filter(x => x.user === userId)
+    
     if (myTargets.length === 0) {
         return bot.sendMessage(msg.chat.id, "❌ Aapki monitor list khaali hai. Add targets: `/add username`", { parse_mode: "Markdown" })
     }
-    bot.sendMessage(msg.chat.id, `📝 *Your Running Track Slots:*\n\n${myTargets.join("\n")}`, { parse_mode: "Markdown" })
+
+    let responseStr = `📝 *Your Running Track Slots:*\n\n`
+    myTargets.forEach(x => {
+        // Fallback for old targets that don't have dId assigned yet
+        if (!x.dId) {
+            x.dId = Math.floor(Math.random() * 1000) + 1
+        }
+        responseStr += `• *@${x.username}* ➔ \`/delete_${x.dId}\`\n`
+    })
+    
+    saveAll() // Ensure fallback mapping gets written down instantly
+    bot.sendMessage(msg.chat.id, responseStr, { parse_mode: "Markdown" })
 })
 
-/* PLAN COMMAND */
-bot.onText(/\/plan/, async (msg) => {
+/* TARGET DELETION PROTOCOL ENGINE VIA TAP-CMD */
+bot.onText(/\/delete_(.+)/, async (msg, match) => {
+    try {
+        const targetId = Number(match[1])
+        const userId = msg.from.id
+
+        // Locate specific match index in queue mapping tracking logs
+        const index = monitor.findIndex(x => x.user === userId && x.dId === targetId)
+
+        if (index === -1) {
+            return bot.sendMessage(msg.chat.id, "❌ *Target Not Found:* Yeh entry invalid hai ya pehle hi remove ho chuki hai.", { parse_mode: "Markdown" })
+        }
+
+        const removedTarget = monitor[i = index].username
+
+        // Clean database references out of structural file systems 
+        monitor.splice(index, 1)
+        
+        // Remove from free limits pool if user is a free tier client
+        if (freeUsers[userId]) {
+            freeUsers[userId] = freeUsers[userId].filter(u => u !== removedTarget)
+        }
+
+        saveAll()
+
+        bot.sendMessage(msg.chat.id, `✅ *Target Removed:* *@${removedTarget}* ko aapki running slot tracking queue se successfully delete kar diya gaya hai.`, { parse_mode: "Markdown" })
+    } catch (e) {
+        console.error("Deletion Command Route Error:", e)
+    }
+})
+
+/* DYNAMIC INLINE TRANSFER INTERFACE COMMAND */
+bot.onText(/\/transfer/, async (msg) => {
+    const userId = msg.from.id
+    const userClaims = owned.filter(x => x.claimedBy === userId)
+
+    if (userClaims.length === 0) {
+        return bot.sendMessage(msg.chat.id, "❌ Bot ne aapke liye abhi tak koi username claim nahi kiya hai.")
+    }
+
+    let keyboardButtons = []
+    userClaims.forEach(item => {
+        keyboardButtons.push([{ text: `🎁 Claim @${item.username}`, callback_data: `trf_${item.username}` }])
+    })
+
     bot.sendMessage(
         msg.chat.id,
-        `💎 *Premium Plans Slots*\n\n3D → ₹99\n7D → ₹199\n15D → ₹349\n30D → ₹599\n3M → ₹999\nLife → ₹3000`,
+        `📦 *Your Sniped Usernames Inventory*\n\nNiche diye gaye buttons me se select karein ki aap kis username ki ownership apne Telegram account par transfer karwana chahte hain:`,
         {
+            parse_mode: "Markdown",
             reply_markup: {
-                inline_keyboard: [[{ text: "Buy Access", callback_data: "payment" }]]
-            },
-            parse_mode: "Markdown"
+                inline_keyboard: keyboardButtons
+            }
         }
     )
 })
 
+/* PLAN COMMAND */
+bot.onText(/\/plan/, async (msg) => {
+    bot.sendMessage(msg.chat.id, `💎 *Premium Plans Slots*\n\n3D → ₹99\n7D → ₹199\n15D → ₹349\n30D → ₹599\n3M → ₹999\nLife → ₹3000`, { reply_markup: { inline_keyboard: [[{ text: "Buy Access", callback_data: "payment" }]] }, parse_mode: "Markdown" })
+})
+
 /* HELP COMMAND */
 bot.onText(/\/help/, async (msg) => {
-    bot.sendMessage(msg.chat.id, `📚 *Commands:*\n\n🔹 \`/add username\` - Add username to sniper loop\n🔹 \`/my\` - Show your ongoing targets\n🔹 \`/plan\` - Premium details\n🔹 \`/help\` - Show this help menu`, { parse_mode: "Markdown" })
+    bot.sendMessage(msg.chat.id, `📚 *Commands:*\n\n🔹 \`/add username\` - Add to sniper loop\n🔹 \`/my\` - Ongoing track targets & delete option\n🔹 \`/transfer\` - Take ownership of claimed usernames\n🔹 \`/plan\` - Premium details`, { parse_mode: "Markdown" })
 })
 
-/* SCREENSHOT PAYMENT RECEIVER */
+/* PHOTO HANDLER */
 bot.on("photo", async (msg) => {
     try {
-        await bot.sendPhoto(
-            OWNER_ID,
-            msg.photo[msg.photo.length - 1].file_id,
-            {
-                caption: `💳 *New Premium Request*\n\n👤 Sender Identity: \`${msg.from.id}\``,
-                parse_mode: "Markdown",
-                reply_markup: {
-                    inline_keyboard: [
-                        [
-                            { text: "Approve ✅", callback_data: `approve_${msg.from.id}` },
-                            { text: "Deny ❌", callback_data: `deny_${msg.from.id}` }
-                        ]
-                    ]
-                }
-            }
-        )
-        bot.sendMessage(msg.chat.id, `📸 *Receipt delivered!* Waiting for manual verification.`, { parse_mode: "Markdown" })
-    } catch (e) {
-        console.error("Photo Upload Error:", e)
-    }
+        await bot.sendPhoto(OWNER_ID, msg.photo[msg.photo.length - 1].file_id, { caption: `💳 *New Premium Request*\n\n👤 Sender Identity: \`${msg.from.id}\``, parse_mode: "Markdown", reply_markup: { inline_keyboard: [[{ text: "Approve ✅", callback_data: `approve_${msg.from.id}` }, { text: "Deny ❌", callback_data: `deny_${msg.from.id}` }]] } })
+        bot.sendMessage(msg.chat.id, `📸 *Receipt delivered!*`, { parse_mode: "Markdown" })
+    } catch (e) {}
 })
 
-/* INSTANT SNIPER ENGINE CORE (Checks & Claims inside 1 Second Loop) */
+/* PRO-LEVEL SNIPER LOOP ENGINE (Instant 1-Second Check & Claim) */
 setInterval(async () => {
     if (monitor.length === 0) return
-
-    if (!process.env.OWNER_SESSION) {
-        console.log("CRITICAL ERROR: OWNER_SESSION is missing inside variables!")
-        return
-    }
+    if (!process.env.OWNER_SESSION) return
 
     for (let i = monitor.length - 1; i >= 0; i--) {
         const data = monitor[i]
         let isAvailable = false
 
-        // FORCE CHECK: Har condition me availability test karega
         try {
             await bot.getChat("@" + data.username)
         } catch (err) {
-            // Agar "chat not found" aaye ya error code 400 ho, matlab username khaali hai!
             if (err.response && err.response.body) {
                 const desc = err.response.body.description || ""
                 if (desc.includes("chat not found") || err.response.statusCode === 400) {
                     isAvailable = true
                 }
             } else {
-                isAvailable = true // Failsafe fallback
+                isAvailable = true
             }
         }
 
-        // INSTANT CLAIM EXECUTION
         if (isAvailable) {
+            const client = new TelegramClient(new StringSession(process.env.OWNER_SESSION), Number(process.env.API_ID), process.env.API_HASH, { connectionRetries: 3 })
+            
             try {
-                const client = new TelegramClient(
-                    new StringSession(process.env.OWNER_SESSION),
-                    Number(process.env.API_ID),
-                    process.env.API_HASH,
-                    { connectionRetries: 3 }
-                )
-
                 await client.connect()
                 
-                // Attack MTProto trigger to capture username instantly
-                await client.invoke(
-                    new Api.account.UpdateUsername({ username: data.username })
+                const createChannelResult = await client.invoke(
+                    new Api.channels.CreateChannel({
+                        title: `Reserved Space ${data.username}`,
+                        about: `Secured by @${BOT_USERNAME}`,
+                        broadcast: true,
+                        megagroup: false
+                    })
                 )
 
-                if (!owned.includes(data.username)) {
-                    owned.push(data.username)
-                }
+                const channelId = createChannelResult.chats[0].id
 
-                // Remove from queue fast to block multi-execution crashes
+                await client.invoke(
+                    new Api.channels.UpdateUsername({
+                        channel: channelId,
+                        username: data.username
+                    })
+                )
+
+                owned.push({
+                    username: data.username,
+                    claimedBy: data.user,
+                    channelId: channelId.toString()
+                })
+
                 monitor.splice(i, 1)
                 saveAll()
 
-                // Generate Photo dynamic banner
                 const photoBuffer = generateClaimPhoto(data.username)
-
-                // Detailed announcement response message 
-                const announcementText = `🔥 *BOOM! USERNAME SNIPED BY @${BOT_USERNAME}* 🔥\n\n` +
-                                         `👑 *Status:* SUCCESSFULLY SECURED\n` +
-                                         `🎯 *Username:* @${data.username}\n` +
-                                         `👤 *Requested By User ID:* \`${data.user}\`\n\n` +
-                                         `*Note:* Yeh username successfully secure ho chuka hai. Iske transfer system ke liye admin se contact karein.`
+                const announcementText = `🔥 *BOOM! USERNAME SNIPED BY @${BOT_USERNAME}* 🔥\n\n👑 *Status:* SUCCESSFULLY SECURED\n🎯 *Username:* @${data.username}\n\n📦 *Ownership Note:* Apna ownership title lene ke liye abhi chat me \`/transfer\` command types karein!`
 
                 await bot.sendPhoto(data.user, photoBuffer, { caption: announcementText, parse_mode: "Markdown" })
                 
-                await client.disconnect()
             } catch (e) {
-                console.error("Sniper Claim Collision Error for " + data.username + ":", e.message)
+                console.error("Critical Sniper Execution Exception:", e.message)
+            } finally {
+                await client.disconnect()
             }
         }
     }
-}, 1000) // Fast 1-Second Execution Loop
+}, 1000)
 
-/* SYSTEM FAILSAFE PROTECTION */
-process.on("unhandledRejection", (reason) => {})
-process.on("uncaughtException", (err) => {})
-bot.on("polling_error", (err) => {})
+/* FAILSAFE PROTECTION */
+process.on("unhandledRejection", () => {})
+process.on("uncaughtException", () => {})
+bot.on("polling_error", () => {})
 
-console.log("🚀 INSTANT SNIPER MODE IS RAW AND RUNNING")
-                                                                     
+console.log("🚀 PRODUCTION ENGINE LOADED WITH AUTO /DELETE STRATEGIES")
+                
