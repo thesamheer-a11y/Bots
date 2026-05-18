@@ -3,11 +3,12 @@ require("dotenv").config()
 const TelegramBot = require("node-telegram-bot-api")
 const fs = require("fs")
 
-const { TelegramClient, Api } = require("telegram")
+const { TelegramClient } = require("telegram")
+const { Api } = require("telegram/tl")
 const { StringSession } = require("telegram/sessions")
 
-const bot = new TelegramBot(process.env.BOT_TOKEN, {
-polling: true
+const bot = new TelegramBot(process.env.BOT_TOKEN,{
+polling:true
 })
 
 const OWNER_ID = "8715707181"
@@ -77,7 +78,7 @@ return users[id] && users[id].active
 
 /* START */
 
-bot.onText(/\/start/, async (msg) => {
+bot.onText(/\/start/, async (msg)=>{
 
 bot.sendMessage(
 msg.chat.id,
@@ -92,16 +93,22 @@ msg.chat.id,
 👤 Free: 1 Username
 💎 Premium: Unlimited`,
 {
-reply_markup: {
-inline_keyboard: [
+reply_markup:{
+inline_keyboard:[
 [
 {
-text: "🇮🇳 Hindi",
-callback_data: "lang_hindi"
+text:"🇮🇳 Hindi",
+callback_data:"lang_hindi"
 },
 {
-text: "🇵🇰 Punjabi",
-callback_data: "lang_punjabi"
+text:"🇵🇰 Punjabi",
+callback_data:"lang_punjabi"
+}
+],
+[
+{
+text:"💎 Plans",
+callback_data:"payment"
 }
 ]
 ]
@@ -113,7 +120,7 @@ callback_data: "lang_punjabi"
 
 /* CALLBACK */
 
-bot.on("callback_query", async (q) => {
+bot.on("callback_query", async(q)=>{
 
 const data = q.data
 
@@ -121,7 +128,7 @@ const data = q.data
 
 if(data == "lang_hindi"){
 
-bot.editMessageText(
+return bot.editMessageText(
 `🚀 यूजरनेम मैनेजर
 
 ⚡ ऑटो यूजरनेम क्लेम बॉट
@@ -133,14 +140,24 @@ bot.editMessageText(
 👤 फ्री: 1 यूजरनेम
 💎 प्रीमियम: अनलिमिटेड`,
 {
-chat_id: q.message.chat.id,
-message_id: q.message.message_id,
-reply_markup: {
-inline_keyboard: [
+chat_id:q.message.chat.id,
+message_id:q.message.message_id,
+reply_markup:{
+inline_keyboard:[
 [
 {
-text: "💎 प्लान्स",
-callback_data: "payment"
+text:"🇮🇳 Hindi",
+callback_data:"lang_hindi"
+},
+{
+text:"🇵🇰 Punjabi",
+callback_data:"lang_punjabi"
+}
+],
+[
+{
+text:"💎 प्लान्स",
+callback_data:"payment"
 }
 ]
 ]
@@ -154,7 +171,7 @@ callback_data: "payment"
 
 if(data == "lang_punjabi"){
 
-bot.editMessageText(
+return bot.editMessageText(
 `🚀 ਯੂਜ਼ਰਨੇਮ ਮੈਨੇਜਰ
 
 ⚡ ਆਟੋ ਯੂਜ਼ਰਨੇਮ ਕਲੇਮ ਬੋਟ
@@ -166,14 +183,24 @@ bot.editMessageText(
 👤 ਫ੍ਰੀ: 1 ਯੂਜ਼ਰਨੇਮ
 💎 ਪ੍ਰੀਮੀਅਮ: ਅਨਲਿਮਿਟਡ`,
 {
-chat_id: q.message.chat.id,
-message_id: q.message.message_id,
-reply_markup: {
-inline_keyboard: [
+chat_id:q.message.chat.id,
+message_id:q.message.message_id,
+reply_markup:{
+inline_keyboard:[
 [
 {
-text: "💎 Plans",
-callback_data: "payment"
+text:"🇮🇳 Hindi",
+callback_data:"lang_hindi"
+},
+{
+text:"🇵🇰 Punjabi",
+callback_data:"lang_punjabi"
+}
+],
+[
+{
+text:"💎 Plans",
+callback_data:"payment"
 }
 ]
 ]
@@ -187,24 +214,77 @@ callback_data: "payment"
 
 if(data == "payment"){
 
-bot.editMessageText(
+return bot.editMessageText(
 `💎 Premium Plans
 
-3D • ₹99
-7D • ₹199
-15D • ₹349
-30D • ₹599
-3M • ₹999
-Life • ₹3000
+3D → ₹99
+7D → ₹199
+15D → ₹349
+30D → ₹599
+3M → ₹999
+Life → ₹3000
 
 💳 UPI:
 \`itzrao@fam\`
 
-📸 Send Screenshot After Payment.`,
+📸 Send Screenshot After Payment`,
 {
-chat_id: q.message.chat.id,
-message_id: q.message.message_id,
-parse_mode: "Markdown"
+chat_id:q.message.chat.id,
+message_id:q.message.message_id,
+parse_mode:"Markdown",
+reply_markup:{
+inline_keyboard:[
+[
+{
+text:"⬅️ Back",
+callback_data:"back_start"
+}
+]
+]
+}
+}
+)
+
+}
+
+/* BACK */
+
+if(data == "back_start"){
+
+return bot.editMessageText(
+`🚀 Username Manager
+
+⚡ Auto Username Claim Bot
+
+• Auto Claim
+• Fast Monitoring
+• Premium System
+
+👤 Free: 1 Username
+💎 Premium: Unlimited`,
+{
+chat_id:q.message.chat.id,
+message_id:q.message.message_id,
+reply_markup:{
+inline_keyboard:[
+[
+{
+text:"🇮🇳 Hindi",
+callback_data:"lang_hindi"
+},
+{
+text:"🇵🇰 Punjabi",
+callback_data:"lang_punjabi"
+}
+],
+[
+{
+text:"💎 Plans",
+callback_data:"payment"
+}
+]
+]
+}
 }
 )
 
@@ -217,14 +297,27 @@ if(data.startsWith("approve_")){
 let userId = data.split("_")[1]
 
 users[userId] = {
-active: true
+active:true
 }
 
 saveData()
 
 await bot.sendMessage(
 userId,
-`✅ Premium Activated`
+`✅ Premium Activated
+
+🚀 Setup Guide
+
+1. Use /login
+2. Send String Session
+3. Use:
+/add username
+
+Example:
+/add example
+
+⚡ Bot Auto Claims
+When Username Gets Free`
 )
 
 try{
@@ -264,14 +357,14 @@ q.message.message_id
 
 /* LOGIN */
 
-bot.onText(/\/login/, async (msg) => {
+bot.onText(/\/login/, async(msg)=>{
 
 bot.sendMessage(
 msg.chat.id,
 `🔐 Send String Session`,
 {
-reply_markup: {
-force_reply: true
+reply_markup:{
+force_reply:true
 }
 }
 )
@@ -280,7 +373,7 @@ force_reply: true
 
 /* SAVE SESSION */
 
-bot.on("message", async (msg) => {
+bot.on("message", async(msg)=>{
 
 if(
 msg.reply_to_message &&
@@ -288,7 +381,7 @@ msg.reply_to_message.text &&
 msg.reply_to_message.text.includes("String Session")
 ){
 
-sessions[msg.from.id] = msg.text
+sessions[msg.from.id] = msg.text.trim()
 
 saveData()
 
@@ -303,7 +396,7 @@ msg.chat.id,
 
 /* ADD */
 
-bot.onText(/\/add (.+)/, async (msg, match) => {
+bot.onText(/\/add (.+)/, async(msg,match)=>{
 
 let username = match[1]
 .replace("@","")
@@ -319,7 +412,7 @@ String(msg.from.id) != OWNER_ID &&
 
 return bot.sendMessage(
 msg.chat.id,
-`🔐 Login Required
+`🔐 Login First
 
 Use:
 /login`
@@ -349,12 +442,12 @@ msg.chat.id,
 💎 Upgrade:
 /plan`,
 {
-reply_markup: {
-inline_keyboard: [
+reply_markup:{
+inline_keyboard:[
 [
 {
-text: "Buy Premium",
-callback_data: "payment"
+text:"Buy Premium",
+callback_data:"payment"
 }
 ]
 ]
@@ -371,7 +464,7 @@ freeUsers[msg.from.id].push(username)
 /* DUPLICATE */
 
 let exists = monitor.find(
-x => x.username == username
+x=>x.username == username
 )
 
 if(exists){
@@ -386,8 +479,8 @@ msg.chat.id,
 /* ADD */
 
 monitor.push({
-user: msg.from.id,
-username: username
+user:msg.from.id,
+username:username
 })
 
 saveData()
@@ -403,25 +496,25 @@ msg.chat.id,
 
 /* PLAN */
 
-bot.onText(/\/plan/, async (msg) => {
+bot.onText(/\/plan/, async(msg)=>{
 
 bot.sendMessage(
 msg.chat.id,
 `💎 Premium Plans
 
-3D • ₹99
-7D • ₹199
-15D • ₹349
-30D • ₹599
-3M • ₹999
-Life • ₹3000`,
+3D → ₹99
+7D → ₹199
+15D → ₹349
+30D → ₹599
+3M → ₹999
+Life → ₹3000`,
 {
-reply_markup: {
-inline_keyboard: [
+reply_markup:{
+inline_keyboard:[
 [
 {
-text: "Buy Premium",
-callback_data: "payment"
+text:"Buy Premium",
+callback_data:"payment"
 }
 ]
 ]
@@ -433,13 +526,13 @@ callback_data: "payment"
 
 /* FREE */
 
-bot.onText(/\/free/, async (msg) => {
+bot.onText(/\/free/, async(msg)=>{
 
 bot.sendMessage(
 msg.chat.id,
 `👤 Free Plan
 
-• 1 Username Limit
+• 1 Username
 • Basic Monitoring
 
 💎 Premium:
@@ -450,24 +543,24 @@ Unlimited Usernames`
 
 /* HELP */
 
-bot.onText(/\/help/, async (msg) => {
+bot.onText(/\/help/, async(msg)=>{
 
 bot.sendMessage(
 msg.chat.id,
 `📚 Commands
 
-/login - Link Account
-/add user - Monitor
-/free - Free Plan
-/plan - Premium
-/help - Commands`
+/login
+/add username
+/free
+/plan
+/help`
 )
 
 })
 
-/* PHOTO */
+/* PAYMENT SCREENSHOT */
 
-bot.on("photo", async (msg) => {
+bot.on("photo", async(msg)=>{
 
 await bot.sendPhoto(
 OWNER_ID,
@@ -477,16 +570,16 @@ caption:
 `💳 New Payment
 
 👤 ${msg.from.id}`,
-reply_markup: {
-inline_keyboard: [
+reply_markup:{
+inline_keyboard:[
 [
 {
-text: "Approve",
-callback_data: `approve_${msg.from.id}`
+text:"Approve",
+callback_data:`approve_${msg.from.id}`
 },
 {
-text: "Deny",
-callback_data: `deny_${msg.from.id}`
+text:"Deny",
+callback_data:`deny_${msg.from.id}`
 }
 ]
 ]
@@ -505,30 +598,30 @@ msg.chat.id,
 
 setInterval(async()=>{
 
-for(let data of monitor){
-
-let username = data.username
-let owner = data.user
+for(const data of monitor){
 
 try{
 
 await bot.getChat(
-"@" + username
+"@" + data.username
 )
 
 }catch(err){
 
-if(
-err.response &&
-err.response.body.description
-.includes("chat not found")
-){
-
 try{
 
-let stringSession =
+if(
+err.response &&
+err.response.body &&
+err.response.body.description &&
+err.response.body.description.includes("chat not found")
+){
+
+if(!sessions[data.user]) continue
+
+const stringSession =
 new StringSession(
-sessions[owner]
+sessions[data.user]
 )
 
 const client =
@@ -537,7 +630,7 @@ stringSession,
 Number(process.env.API_ID),
 process.env.API_HASH,
 {
-connectionRetries: 5
+connectionRetries:5
 }
 )
 
@@ -545,36 +638,35 @@ await client.connect()
 
 await client.invoke(
 new Api.account.UpdateUsername({
-username: username
+username:data.username
 })
 )
 
-owned.push(username)
+if(!owned.includes(data.username)){
+
+owned.push(data.username)
 
 saveData()
 
-await bot.sendMessage(
-owner,
-`🎉 Username Claimed
+}
 
-👤 @${username}`
+await bot.sendMessage(
+data.user,
+`🎉 Claimed @${data.username}`
 )
 
 await bot.sendMessage(
 OWNER_ID,
-`✅ Claimed
-
-👤 @${username}`
+`✅ Claimed @${data.username}`
 )
+
+await client.disconnect()
+
+}
 
 }catch(claimErr){
 
-await bot.sendMessage(
-owner,
-`❌ Claim Failed
-
-👤 @${username}`
-)
+console.log(claimErr)
 
 }
 
@@ -582,25 +674,29 @@ owner,
 
 }
 
-}
+},5000)
 
-},4000)
-
-/* ERROR */
-
-bot.on(
-"polling_error",
-console.log
-)
+/* ERROR FIX */
 
 process.on(
 "unhandledRejection",
-console.log
+err=>{
+console.log(err)
+}
 )
 
 process.on(
 "uncaughtException",
-console.log
+err=>{
+console.log(err)
+}
+)
+
+bot.on(
+"polling_error",
+err=>{
+console.log(err)
+}
 )
 
 console.log("BOT STARTED")
