@@ -157,8 +157,8 @@ async function executeClaim(username, userId) {
         const photoBuffer = generateClaimPhoto(username)
         const announcementText = `🔥 *BOOM! INSTANTLY SNIPED BY @${BOT_USERNAME}* 🔥\n\n👑 *Status:* SUCCESSFULLY SECURED\n🎯 *Username:* @${username}\n\n📦 *Ownership Note:* Check your claimed stock using \`/my\` to instantly release and grab this username!`
 
-        await bot.sendMessage(userId, announcementText, { parse_mode: "Markdown" }).catch(() => {});
-        await bot.sendPhoto(userId, photoBuffer).catch(() => {});
+        // Fix parameters order for proper media delivery
+        await bot.sendPhoto(userId, photoBuffer, { caption: announcementText, parse_mode: "Markdown" }).catch(() => {});
         return true
     } catch (e) {
         console.error(`Sniper Execution Failure for @${username}:`, e.message)
@@ -199,7 +199,6 @@ bot.onText(/\/add (.+)/, async (msg, match) => {
         let username = match[1].replace("@", "").trim().toLowerCase()
         const userId = msg.from.id
 
-        // Validation for valid username string
         if(!/^[a-zA-Z0-9_]{4,32}$/.test(username)) {
             return bot.sendMessage(msg.chat.id, `⚠️ *Invalid Username Format!* Use alphanumeric and underscores only (min 4 characters).`, { parse_mode: "Markdown" })
         }
@@ -269,7 +268,7 @@ bot.onText(/\/track/, async (msg) => {
     bot.sendMessage(msg.chat.id, responseStr, { parse_mode: "Markdown" })
 })
 
-/* USER STATUS COMMAND (NEW UX IMPROVEMENT) */
+/* USER STATUS COMMAND */
 bot.onText(/\/status/, async (msg) => {
     const userId = msg.from.id
     const premiumActive = isPremium(userId)
@@ -372,7 +371,7 @@ bot.onText(/\/plan/, async (msg) => {
 Lifetime Access ➔ ₹3000`, { reply_markup: { inline_keyboard: [[{ text: "💳 Pay & Activate Premium", callback_data: "payment" }]] }, parse_mode: "Markdown" })
 })
 
-/* ADMIN COMMANDS (POWERFUL ENHANCEMENTS) */
+/* ADMIN COMMANDS */
 bot.onText(/\/stats/, async (msg) => {
     if (String(msg.from.id) !== OWNER_ID) return;
     const totalUsers = Object.keys(users).length;
@@ -464,7 +463,7 @@ bot.on("photo", async (msg) => {
     }
 })
 
-/* REFACTORED SAFE QUEUE RUNNER (REPLACES BROKEN SETINTERVAL SPAM) */
+/* REFACTORED SAFE QUEUE RUNNER */
 async function dynamicScannerLoop() {
     if (isScannerRunning) return;
     isScannerRunning = true;
@@ -495,16 +494,15 @@ async function dynamicScannerLoop() {
                         saveAll()
                     }
                 }
-                // Small sleep interval inside pool sequence to defend over flood limits
+                // Rate limiting protection gap
                 await new Promise(resolve => setTimeout(resolve, 350));
             }
         }
-        // Base idle cool down window
         await new Promise(resolve => setTimeout(resolve, 1000));
     }
 }
 
-/* SYSTEM BOOT AND STABLE CONNECTION INITIALIZATION */
+/* SYSTEM BOOT */
 async function initializeSystem() {
     if (!process.env.OWNER_SESSION || !process.env.API_ID || !process.env.API_HASH) {
         console.error("❌ Critical Error: MTProto environment configurations are missing!");
@@ -522,7 +520,6 @@ async function initializeSystem() {
     await mtProtoClient.connect()
     console.log("🚀 ALL FIXES ONLINE: AUTOMATED TIMED ENGINE RUNNING CLEAN");
     
-    // Fire safe automated non-overlapping infinite lookup engine
     dynamicScannerLoop();
 }
 
@@ -532,4 +529,4 @@ process.on("uncaughtException", () => {})
 bot.on("polling_error", () => {})
 
 initializeSystem();
-        
+            
