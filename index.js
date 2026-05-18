@@ -113,16 +113,17 @@ bot.onText(/\/start/, async (msg) => {
         msg.chat.id,
         `🚀 *Welcome to Auto Username Claim Bot*
 
-⚡ *Yeh Bot Kya Kaam Karta Hai?*
-Yeh ek ultra-fast username sniper bot hai. Jab bhi koi premium, radd, ya short username market me free hota hai, yeh bot mili-seconds ke andar use automatic aapke liye secure aur claim kar leta hai!
+⚡ *What does this bot do?*
+This is an ultra-fast username sniper bot. Whenever a premium, short, or dropped username becomes free in the market, this bot automatically claims and secures it for you within milliseconds!
 
-❌ *No Login Required:* Aapko apna personal number ya OTP share karne ki koi zaroorat nahi hai.
+❌ *No Login Required:* No need to share your phone number, password, or OTP.
 
 👤 Free Slots: 1 Target
 💎 Premium Slots: Unlimited Targets
 
-🎯 Target lagane ke liye abhi use karein: \`/add username\`
-📦 Apne claimed username ko lene ke liye: \`/transfer\``,
+🎯 To add a target, use: \`/add username\`
+📊 To view running targets, use: \`/track\`
+📦 To view your successfully claimed stock, use: \`/my\``,
         {
             parse_mode: "Markdown",
             reply_markup: {
@@ -147,7 +148,7 @@ bot.on("callback_query", async (q) => {
         const userId = q.from.id
 
         if (data === "lang_hindi") {
-            return bot.editMessageText(`🚀 *ऑटो यूजरनेम क्लेम बॉट में आपका स्वागत है*\n\n⚡ *यह बॉट क्या काम करता है?*\nयह एक अब्दुल-फास्ट यूजरनेम स्निपर बॉट है। जैसे ही कोई भी यूजरनेम खाली या फ्री होता है, यह बॉट उसे पलक झपकते ही खुद-ब-खुद क्लेम और सिक्योर कर लेता है!\n\n🎯 अपना टारगेट सेट करने के लिए टाइप करें: \`/add username\``, { chat_id: q.message.chat.id, message_id: q.message.message_id, parse_mode: "Markdown" })
+            return bot.editMessageText(`🚀 *ऑटो यूजरनेम क्लेम बॉट में आपका स्वागत है*\n\n⚡ *यह बॉट क्या काम करता है?*\nयह एक अल्ट्रा-फास्ट यूजरनेम स्निपर बॉट है। जैसे ही कोई भी यूजरनेम खाली या फ्री होता है, यह बॉट उसे पलक झपकते ही खुद-ब-खुद क्लेम और सिक्योर कर लेता है!\n\n🎯 अपना टारगेट सेट करने के लिए टाइप करें: \`/add username\``, { chat_id: q.message.chat.id, message_id: q.message.message_id, parse_mode: "Markdown" })
         }
 
         if (data === "lang_punjabi") {
@@ -170,98 +171,6 @@ bot.on("callback_query", async (q) => {
             let targetUid = data.split("_")[1]
             await bot.sendMessage(targetUid, `❌ *Payment Declined.*`)
             return bot.deleteMessage(q.message.chat.id, q.message.message_id)
-        }
-
-        /* TRANSFER FLOW CALLBACK */
-        if (data.startsWith("trf_")) {
-            const targetUsername = data.split("_")[1]
-            const record = owned.find(x => x.username === targetUsername && x.claimedBy === userId)
-
-            if (!record) {
-                return bot.answerCallbackQuery(q.id, { text: "❌ Record Not Found!", show_alert: true })
-            }
-
-            await bot.answerCallbackQuery(q.id, { text: "⚡ Processing Transfer..." })
-
-            const client = new TelegramClient(new StringSession(process.env.OWNER_SESSION), Number(process.env.API_ID), process.env.API_HASH, { connectionRetries: 3 })
-            await client.connect()
-
-            try {
-                const inviteLinkObj = await client.invoke(
-                    new Api.messages.ExportChatInvite({
-                        peer: record.channelId,
-                        title: "Transfer Link"
-                    })
-                )
-
-                const channelInviteLink = inviteLinkObj.link
-
-                await bot.sendMessage(
-                    userId,
-                    `🔗 *Step 1:* Pehle is private invitation link par click karke channel join kijiye:\n\n${channelInviteLink}\n\n*Step 2:* Join karne ke baad niche diye gaye validation button par click karein ownership transfer complete karne ke liye.`,
-                    {
-                        parse_mode: "Markdown",
-                        reply_markup: {
-                            inline_keyboard: [[{ text: "Confirm Joined & Transfer Ownership 👑", callback_data: `conf_trf_${targetUsername}` }]]
-                        }
-                    }
-                )
-            } catch (err) {
-                await bot.sendMessage(userId, `❌ Transfer processing error: ${err.message}`)
-            } finally {
-                await client.disconnect()
-            }
-        }
-
-        /* CONFIRM TRANSFER EXECUTION */
-        if (data.startsWith("conf_trf_")) {
-            const targetUsername = data.split("_")[1]
-            const record = owned.find(x => x.username === targetUsername && x.claimedBy === userId)
-
-            if (!record) return;
-
-            const client = new TelegramClient(new StringSession(process.env.OWNER_SESSION), Number(process.env.API_ID), process.env.API_HASH, { connectionRetries: 3 })
-            await client.connect()
-
-            try {
-                await client.invoke(
-                    new Api.channels.EditAdmin({
-                        channel: record.channelId,
-                        userId: String(userId),
-                        adminRights: new Api.chatAdminRights({
-                            changeInfo: true,
-                            postMessages: true,
-                            editMessages: true,
-                            deleteMessages: true,
-                            banUsers: true,
-                            inviteUsers: true,
-                            pinMessages: true,
-                            addAdmins: true,
-                            anonymous: false,
-                            manageCall: true,
-                            other: true
-                        }),
-                        rank: "New Owner"
-                    })
-                )
-
-                await client.invoke(
-                    new Api.channels.UpdateOwner({
-                        channel: record.channelId,
-                        newOwner: String(userId),
-                        password: new Api.InputCheckPasswordEmpty()
-                    })
-                )
-
-                owned = owned.filter(x => x.username !== targetUsername)
-                saveAll()
-
-                await bot.sendMessage(userId, `👑 *SUCCESSAL OWNERSHIP HANDOVER COMPLETE!*\n\n@${targetUsername} channel ki complete creator ownership aapke account par successfully transfer kar di gayi hai!`)
-            } catch (err) {
-                await bot.sendMessage(userId, `⚠️ *Transfer Error:* ${err.message}\n\nAgar aapne channel join nahi kiya hai, to pehle join karein aur dubara button dabayein!`)
-            } finally {
-                await client.disconnect()
-            }
         }
 
     } catch (e) {
@@ -287,7 +196,6 @@ bot.onText(/\/add (.+)/, async (msg, match) => {
             return bot.sendMessage(msg.chat.id, `⚠️ This username is already in our high-speed sniper loop.`)
         }
 
-        // Generate a random ID between 1 and 1000 for deletion routing mapping
         let randomId = Math.floor(Math.random() * 1000) + 1
         
         monitor.push({ user: msg.from.id, username: username, dId: randomId })
@@ -299,83 +207,92 @@ bot.onText(/\/add (.+)/, async (msg, match) => {
     }
 })
 
-/* MY COMMAND (With Instant Tap Delete Command Tags) */
-bot.onText(/\/my/, async (msg) => {
+/* TRACK COMMAND (Shows only active scanning loops) */
+bot.onText(/\/track/, async (msg) => {
     const userId = msg.from.id
     const myTargets = monitor.filter(x => x.user === userId)
     
     if (myTargets.length === 0) {
-        return bot.sendMessage(msg.chat.id, "❌ Aapki monitor list khaali hai. Add targets: `/add username`", { parse_mode: "Markdown" })
+        return bot.sendMessage(msg.chat.id, "❌ Your active monitor list is currently empty.", { parse_mode: "Markdown" })
     }
 
-    let responseStr = `📝 *Your Running Track Slots:*\n\n`
+    let responseStr = `📝 *Active Monitoring Targets:*\n\n`
     myTargets.forEach(x => {
-        // Fallback for old targets that don't have dId assigned yet
-        if (!x.dId) {
-            x.dId = Math.floor(Math.random() * 1000) + 1
-        }
-        responseStr += `• *@${x.username}* ➔ \`/delete_${x.dId}\`\n`
+        responseStr += `• *@${x.username}* (Scanning Live...)\n`
     })
     
-    saveAll() // Ensure fallback mapping gets written down instantly
     bot.sendMessage(msg.chat.id, responseStr, { parse_mode: "Markdown" })
 })
 
-/* TARGET DELETION PROTOCOL ENGINE VIA TAP-CMD */
+/* MY COMMAND (Shows only successfully claimed stock with direct text delete options) */
+bot.onText(/\/my/, async (msg) => {
+    const userId = msg.from.id
+    const userClaims = owned.filter(x => x.claimedBy === userId)
+
+    if (userClaims.length === 0) {
+        return bot.sendMessage(msg.chat.id, "❌ You don't have any successfully claimed usernames yet.")
+    }
+
+    let responseStr = `📦 *Your Successfully Secured Stock:*\n\n` +
+                      `Tap the corresponding command next to your username to delete the reserve channel and claim it yourself:\n\n`
+
+    userClaims.forEach(x => {
+        if (!x.dId) {
+            x.dId = Math.floor(Math.random() * 1000) + 1
+        }
+        responseStr += `• @${x.username} ➔ /delete_${x.dId}\n`
+    })
+
+    saveAll()
+    bot.sendMessage(msg.chat.id, responseStr)
+})
+
+/* DIRECT RE-ROUTE PROTOCOL: DELETES CHANNEL & INFORMS USER IN PLAIN ENGLISH (NO MONO) */
 bot.onText(/\/delete_(.+)/, async (msg, match) => {
     try {
         const targetId = Number(match[1])
         const userId = msg.from.id
 
-        // Locate specific match index in queue mapping tracking logs
-        const index = monitor.findIndex(x => x.user === userId && x.dId === targetId)
+        const index = owned.findIndex(x => x.claimedBy === userId && x.dId === targetId)
 
         if (index === -1) {
-            return bot.sendMessage(msg.chat.id, "❌ *Target Not Found:* Yeh entry invalid hai ya pehle hi remove ho chuki hai.", { parse_mode: "Markdown" })
+            return bot.sendMessage(msg.chat.id, "Error: Selected entry is invalid or has already been dropped.")
         }
 
-        const removedTarget = monitor[i = index].username
+        const record = owned[index]
+        const TargetUserHandle = record.username
+        const TargetChannelUID = record.channelId
 
-        // Clean database references out of structural file systems 
-        monitor.splice(index, 1)
-        
-        // Remove from free limits pool if user is a free tier client
-        if (freeUsers[userId]) {
-            freeUsers[userId] = freeUsers[userId].filter(u => u !== removedTarget)
+        const client = new TelegramClient(new StringSession(process.env.OWNER_SESSION), Number(process.env.API_ID), process.env.API_HASH, { connectionRetries: 3 })
+        await client.connect()
+
+        try {
+            // Permanent annihilation of the placeholder channel
+            await client.invoke(
+                new Api.channels.DeleteChannel({
+                    channel: TargetChannelUID
+                })
+            )
+
+            // Strip record completely from localized storage logs
+            owned.splice(index, 1)
+            saveAll()
+
+            // Response explicitly generated in clean English prose without code-blocks
+            bot.sendMessage(
+                msg.chat.id,
+                "Success! I have successfully deleted the reserve channel holding @" + TargetUserHandle + ". You can now completely own and assign the username to your account immediately!"
+            )
+
+        } catch (channelErr) {
+            bot.sendMessage(msg.chat.id, "Operation Error: " + channelErr.message)
+        } finally {
+            await client.disconnect()
         }
 
-        saveAll()
-
-        bot.sendMessage(msg.chat.id, `✅ *Target Removed:* *@${removedTarget}* ko aapki running slot tracking queue se successfully delete kar diya gaya hai.`, { parse_mode: "Markdown" })
     } catch (e) {
-        console.error("Deletion Command Route Error:", e)
+        console.error("Deletion Processing Failure:", e)
     }
-})
-
-/* DYNAMIC INLINE TRANSFER INTERFACE COMMAND */
-bot.onText(/\/transfer/, async (msg) => {
-    const userId = msg.from.id
-    const userClaims = owned.filter(x => x.claimedBy === userId)
-
-    if (userClaims.length === 0) {
-        return bot.sendMessage(msg.chat.id, "❌ Bot ne aapke liye abhi tak koi username claim nahi kiya hai.")
-    }
-
-    let keyboardButtons = []
-    userClaims.forEach(item => {
-        keyboardButtons.push([{ text: `🎁 Claim @${item.username}`, callback_data: `trf_${item.username}` }])
-    })
-
-    bot.sendMessage(
-        msg.chat.id,
-        `📦 *Your Sniped Usernames Inventory*\n\nNiche diye gaye buttons me se select karein ki aap kis username ki ownership apne Telegram account par transfer karwana chahte hain:`,
-        {
-            parse_mode: "Markdown",
-            reply_markup: {
-                inline_keyboard: keyboardButtons
-            }
-        }
-    )
 })
 
 /* PLAN COMMAND */
@@ -385,7 +302,7 @@ bot.onText(/\/plan/, async (msg) => {
 
 /* HELP COMMAND */
 bot.onText(/\/help/, async (msg) => {
-    bot.sendMessage(msg.chat.id, `📚 *Commands:*\n\n🔹 \`/add username\` - Add to sniper loop\n🔹 \`/my\` - Ongoing track targets & delete option\n🔹 \`/transfer\` - Take ownership of claimed usernames\n🔹 \`/plan\` - Premium details`, { parse_mode: "Markdown" })
+    bot.sendMessage(msg.chat.id, `📚 *Commands:*\n\n🔹 \`/add username\` - Add to sniper loop\n🔹 \`/track\` - View targets inside live scans\n🔹 \`/my\` - View your claimed stock to take over\n🔹 \`/plan\` - Premium details`, { parse_mode: "Markdown" })
 })
 
 /* PHOTO HANDLER */
@@ -442,17 +359,20 @@ setInterval(async () => {
                     })
                 )
 
+                let uniqueDeletionId = Math.floor(Math.random() * 1000) + 1
+
                 owned.push({
                     username: data.username,
                     claimedBy: data.user,
-                    channelId: channelId.toString()
+                    channelId: channelId.toString(),
+                    dId: uniqueDeletionId
                 })
 
                 monitor.splice(i, 1)
                 saveAll()
 
                 const photoBuffer = generateClaimPhoto(data.username)
-                const announcementText = `🔥 *BOOM! USERNAME SNIPED BY @${BOT_USERNAME}* 🔥\n\n👑 *Status:* SUCCESSFULLY SECURED\n🎯 *Username:* @${data.username}\n\n📦 *Ownership Note:* Apna ownership title lene ke liye abhi chat me \`/transfer\` command types karein!`
+                const announcementText = `🔥 *BOOM! USERNAME SNIPED BY @${BOT_USERNAME}* 🔥\n\n👑 *Status:* SUCCESSFULLY SECURED\n🎯 *Username:* @${data.username}\n\n📦 *Ownership Note:* Check your claimed stock using \`/my\` to instantly release and grab this username!`
 
                 await bot.sendPhoto(data.user, photoBuffer, { caption: announcementText, parse_mode: "Markdown" })
                 
@@ -470,5 +390,5 @@ process.on("unhandledRejection", () => {})
 process.on("uncaughtException", () => {})
 bot.on("polling_error", () => {})
 
-console.log("🚀 PRODUCTION ENGINE LOADED WITH AUTO /DELETE STRATEGIES")
-                
+console.log("🚀 PRODUCTION ENGINE ACTIVE - SYNCED TRACK/MY SYSTEMS ONLINE")
+                 
