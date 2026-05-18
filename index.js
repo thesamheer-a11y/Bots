@@ -2,7 +2,7 @@ require("dotenv").config()
 
 const TelegramBot = require("node-telegram-bot-api")
 const fs = require("fs")
-const { createCanvas } = require("canvas") // High-quality image creation
+const { createCanvas } = require("canvas")
 
 /* FIXED IMPORTS */
 const { TelegramClient } = require("telegram")
@@ -15,13 +15,13 @@ const bot = new TelegramBot(
     {
         polling: {
             autoStart: true,
-            interval: 300
+            interval: 100 // Ultrafast response for commands
         }
     }
 )
 
 const OWNER_ID = "8715707181"
-const BOT_USERNAME = "userownerbot" // Banner credit username
+const BOT_USERNAME = "userownerbot" // Aapke channel/bot ka credit handler
 
 /* SAFE JSON LOAD */
 function loadJSON(file, def) {
@@ -33,7 +33,6 @@ function loadJSON(file, def) {
         fs.writeFileSync(file, JSON.stringify(def, null, 2))
         return def
     } catch (e) {
-        console.error(`Error loading ${file}:`, e)
         return def
     }
 }
@@ -48,9 +47,7 @@ let freeUsers = loadJSON("freeUsers.json", {})
 function save(file, data) {
     try {
         fs.writeFileSync(file, JSON.stringify(data, null, 2))
-    } catch (e) {
-        console.error(`Error saving ${file}:`, e)
-    }
+    } catch (e) {}
 }
 
 function saveAll() {
@@ -73,54 +70,64 @@ function generateClaimPhoto(username) {
     const canvas = createCanvas(width, height)
     const ctx = canvas.getContext("2d")
 
-    // Dark Tech Gradient Background
+    // Luxury Dark/Neon Gradient Background
     const gradient = ctx.createLinearGradient(0, 0, width, height)
-    gradient.addColorStop(0, "#0f172a") 
-    gradient.addColorStop(1, "#1e1b4b") 
+    gradient.addColorStop(0, "#090d16") 
+    gradient.addColorStop(1, "#111827") 
     ctx.fillStyle = gradient
     ctx.fillRect(0, 0, width, height)
 
-    // Glow effect shapes
-    ctx.fillStyle = "rgba(99, 102, 241, 0.12)"
+    // Tech matrix glow
+    ctx.fillStyle = "rgba(34, 197, 94, 0.08)"
     ctx.beginPath()
-    ctx.arc(width - 80, 120, 160, 0, Math.PI * 2)
+    ctx.arc(width/2, height/2, 200, 0, Math.PI * 2)
     ctx.fill()
 
     // Title Badge
     ctx.fillStyle = "#22c55e" 
-    ctx.font = "bold 28px sans-serif"
-    ctx.fillText("🎉 SUCCESSFULLY CLAIMED", 60, 130)
+    ctx.font = "bold 30px sans-serif"
+    ctx.fillText("⚡ TARGET SNIPED SUCCESSFULLY", 60, 120)
 
     // Main Claimed Username
     ctx.fillStyle = "#ffffff"
-    ctx.font = "bold 52px sans-serif"
-    ctx.fillText(`@${username}`, 60, 225)
+    ctx.font = "bold 60px sans-serif"
+    ctx.fillText(`@${username}`, 60, 230)
 
-    // Elegant separator line
-    ctx.strokeStyle = "rgba(255, 255, 255, 0.15)"
-    ctx.lineWidth = 2
+    // Divider Line
+    ctx.strokeStyle = "rgba(34, 197, 94, 0.2)"
+    ctx.lineWidth = 3
     ctx.beginPath()
-    ctx.moveTo(60, 285)
-    ctx.lineTo(width - 60, 285)
+    ctx.moveTo(60, 290)
+    ctx.lineTo(width - 60, 290)
     ctx.stroke()
 
-    // Powered By Section
+    // Powered By Channel Footer
     ctx.fillStyle = "#94a3b8" 
     ctx.font = "22px sans-serif"
-    ctx.fillText("Powered by", 60, 340)
+    ctx.fillText("Powered by", 60, 350)
 
-    ctx.fillStyle = "#6366f1" 
-    ctx.font = "bold 26px sans-serif"
-    ctx.fillText(`@${BOT_USERNAME}`, 60, 380)
+    ctx.fillStyle = "#22c55e" 
+    ctx.font = "bold 28px sans-serif"
+    ctx.fillText(`@${BOT_USERNAME}`, 60, 390)
 
     return canvas.toBuffer("image/png")
 }
 
-/* START COMMAND */
+/* START COMMAND (Asli Work Content Fixed) */
 bot.onText(/\/start/, async (msg) => {
     bot.sendMessage(
         msg.chat.id,
-        `🚀 *Username Sniper Manager*\n\n🔥 *No Login Required!* Ab aapko apna account number ya OTP dene ki koi zaroorat nahi hai. Bot seedhe aapke liye username secure karega!\n\n👤 Free User → 1 Slot Limit\n💎 Premium User → Unlimited Slots`,
+        `🚀 *Welcome to Auto Username Claim Bot*
+
+⚡ *Yeh Bot Kya Kaam Karta Hai?*
+Yeh ek ultra-fast username sniper bot hai. Jab bhi koi premium, radd, ya short username market me free hota hai, yeh bot mili-seconds ke andar use automatic aapke liye secure aur claim kar leta hai!
+
+❌ *No Login Required:* Aapko apna personal number ya OTP share karne ki koi zaroorat nahi hai.
+
+👤 Free Slots: 1 Target
+💎 Premium Slots: Unlimited Targets
+
+🎯 Target lagane ke liye abhi use karein: \`/add username\``,
         {
             parse_mode: "Markdown",
             reply_markup: {
@@ -130,7 +137,7 @@ bot.onText(/\/start/, async (msg) => {
                         { text: "🇵🇰 Punjabi", callback_data: "lang_punjabi" }
                     ],
                     [
-                        { text: "💎 Premium Plans", callback_data: "payment" }
+                        { text: "💎 Buy Premium Slots", callback_data: "payment" }
                     ]
                 ]
             }
@@ -145,7 +152,12 @@ bot.on("callback_query", async (q) => {
 
         if (data === "lang_hindi") {
             return bot.editMessageText(
-                `🚀 *यूजरनेम स्निपर मैनेजर*\n\n🔥 *लॉगिन की कोई आवश्यकता नहीं!* बस अपना पसंदीदा यूजरनेम जोड़ें और बॉट उसे खुद-ब-खुद आपके लिए क्लेम कर लेगा।\n\n👤 फ्री यूजर → 1 यूजरनेम\n💎 प्रीमियम यूजर → अनलिमिटेड`,
+                `🚀 *ऑटो यूजरनेम क्लेम बॉट में आपका स्वागत है*
+
+⚡ *यह बॉट क्या काम करता है?*
+यह एक अल्ट्रा-फास्ट यूजरनेम स्निपर बॉट है। जैसे ही कोई भी यूजरनेम खाली या फ्री होता है, यह बॉट उसे पलक झपकते ही खुद-ब-खुद क्लेम और सिक्योर कर लेता है!
+
+🎯 अपना टारगेट सेट करने के लिए टाइप करें: \`/add username\``,
                 {
                     chat_id: q.message.chat.id,
                     message_id: q.message.message_id,
@@ -167,7 +179,12 @@ bot.on("callback_query", async (q) => {
 
         if (data === "lang_punjabi") {
             return bot.editMessageText(
-                `🚀 *ਯੂਜ਼ਰਨੇਮ ਸਨਾਈਪਰ ਮੈਨੇਜਰ*\n\n🔥 *ਕੋਈ ਲੋਗਿਨ ਲੋੜ ਨਹੀਂ!* ਬਸ ਆਪਣਾ ਯੂਜ਼ਰਨੇਮ ਜੋੜੋ, ਬੋਟ ਆਪਣੇ ਆਪ ਕਲੇਮ ਕਰੇਗਾ।\n\n👤 ਫ੍ਰੀ → 1 ਯੂਜ਼ਰਨੇਮ\n💎 ਪ੍ਰੀਮੀਅਮ → ਅਨਲਿਮਿਟਡ`,
+                `🚀 *ਆਟੋ ਯੂਜ਼ਰਨੇਮ ਕਲੇਮ ਬੋਟ ਵਿੱਚ ਤੁਹਾਡਾ ਸਵਾਗਤ ਹੈ*
+
+⚡ *ਇਹ ਬੋਟ ਕੀ ਕੰਮ ਕਰਦਾ ਹੈ?*
+ਜਿਵੇਂ ਹੀ ਕੋਈ ਵੀ ਯੂਜ਼ਰਨੇਮ ਖਾਲੀ ਜਾਂ ਫ੍ਰੀ ਹੁੰਦਾ ਹੈ, ਇਹ ਬੋਟ ਮਿਲੀ-ਸੈਕਿੰਡ ਦੇ ਅੰਦਰ ਉਸਨੂੰ ਆਪਣੇ ਆਪ ਕਲੇਮ ਕਰ ਲੈਂਦਾ ਹੈ!
+
+🎯 ਟਾਰਗੇਟ ਲਗਾਉਣ ਲਈ ਲਿਖੋ: \`/add username\``,
                 {
                     chat_id: q.message.chat.id,
                     message_id: q.message.message_id,
@@ -189,7 +206,7 @@ bot.on("callback_query", async (q) => {
 
         if (data === "payment") {
             return bot.editMessageText(
-                `💎 *Premium Plans*\n\n3D → ₹99\n7D → ₹199\n15D → ₹349\n30D → ₹599\n3M → ₹999\nLife → ₹3000\n\n💳 *UPI ID:* \`itzrao@fam\`\n\n📸 Screenshot yahan send karein!`,
+                `💎 *Premium Plans Slots*\n\n3D → ₹99\n7D → ₹199\n15D → ₹349\n30D → ₹599\n3M → ₹999\nLife → ₹3000\n\n💳 *UPI ID:* \`itzrao@fam\`\n\n📸 Screenshot yahan send karein!`,
                 {
                     chat_id: q.message.chat.id,
                     message_id: q.message.message_id,
@@ -203,13 +220,13 @@ bot.on("callback_query", async (q) => {
             users[userId] = { active: true }
             saveAll()
 
-            await bot.sendMessage(userId, `✅ *Premium Activated!*\n\nAapki limits hatadi gayi hain. Ab use karein: \`/add username\``, { parse_mode: "Markdown" })
+            await bot.sendMessage(userId, `✅ *Premium Activated!* Limits removed. Use: \`/add username\``, { parse_mode: "Markdown" })
             return bot.deleteMessage(q.message.chat.id, q.message.message_id)
         }
 
         if (data.startsWith("deny_")) {
             let userId = data.split("_")[1]
-            await bot.sendMessage(userId, `❌ *Payment Declined.* Dubara check karke bhejien.`)
+            await bot.sendMessage(userId, `❌ *Payment Declined.*`)
             return bot.deleteMessage(q.message.chat.id, q.message.message_id)
         }
 
@@ -235,23 +252,23 @@ bot.onText(/\/add (.+)/, async (msg, match) => {
 
         let exists = monitor.find(x => x.username === username)
         if (exists) {
-            return bot.sendMessage(msg.chat.id, `⚠️ This username is already in the target system loop.`)
+            return bot.sendMessage(msg.chat.id, `⚠️ This username is already in our high-speed sniper loop.`)
         }
 
         monitor.push({ user: msg.from.id, username: username })
         saveAll()
 
-        bot.sendMessage(msg.chat.id, `🎯 *Monitoring Hooked!*\n\nBot target list updated: *@${username}*\nChecking non-stop now.`, { parse_mode: "Markdown" })
+        bot.sendMessage(msg.chat.id, `🎯 *Target Hooked Successfully!*\n\nBot sniper engine is now watching: *@${username}*\nChecking every second for absolute execution.`, { parse_mode: "Markdown" })
     } catch (e) {
         console.error("Add Command Error:", e)
     }
 })
 
-/* USER TRACKS STATUS COMMAND */
+/* USER TRACKS STATUS */
 bot.onText(/\/my/, async (msg) => {
     const myTargets = monitor.filter(x => x.user === msg.from.id).map(x => `@${x.username}`)
     if (myTargets.length === 0) {
-        return bot.sendMessage(msg.chat.id, "❌ Aapki active list empty hai. Targets badhane ke liye use karein: `/add username`", { parse_mode: "Markdown" })
+        return bot.sendMessage(msg.chat.id, "❌ Aapki monitor list khaali hai. Add targets: `/add username`", { parse_mode: "Markdown" })
     }
     bot.sendMessage(msg.chat.id, `📝 *Your Running Track Slots:*\n\n${myTargets.join("\n")}`, { parse_mode: "Markdown" })
 })
@@ -272,17 +289,17 @@ bot.onText(/\/plan/, async (msg) => {
 
 /* HELP COMMAND */
 bot.onText(/\/help/, async (msg) => {
-    bot.sendMessage(msg.chat.id, `📚 *Available Command Protocols:*\n\n🔹 \`/add username\` - Drop target file inside loop\n🔹 \`/my\` - Watch ongoing engine tracks\n🔹 \`/plan\` - Shop license plans\n🔹 \`/help\` - Show protocols`, { parse_mode: "Markdown" })
+    bot.sendMessage(msg.chat.id, `📚 *Commands:*\n\n🔹 \`/add username\` - Add username to sniper loop\n🔹 \`/my\` - Show your ongoing targets\n🔹 \`/plan\` - Premium details\n🔹 \`/help\` - Show this help menu`, { parse_mode: "Markdown" })
 })
 
-/* SCREENSHOT VALIDATION RECEIVER */
+/* SCREENSHOT PAYMENT RECEIVER */
 bot.on("photo", async (msg) => {
     try {
         await bot.sendPhoto(
             OWNER_ID,
             msg.photo[msg.photo.length - 1].file_id,
             {
-                caption: `💳 *New Premium Activation Request*\n\n👤 Sender Identity: \`${msg.from.id}\``,
+                caption: `💳 *New Premium Request*\n\n👤 Sender Identity: \`${msg.from.id}\``,
                 parse_mode: "Markdown",
                 reply_markup: {
                     inline_keyboard: [
@@ -294,86 +311,89 @@ bot.on("photo", async (msg) => {
                 }
             }
         )
-        bot.sendMessage(msg.chat.id, `📸 *Receipt successfully delivered!* Awaiting owner execution.`, { parse_mode: "Markdown" })
+        bot.sendMessage(msg.chat.id, `📸 *Receipt delivered!* Waiting for manual verification.`, { parse_mode: "Markdown" })
     } catch (e) {
         console.error("Photo Upload Error:", e)
     }
 })
 
-/* FIXED PRO SNIPER CORE ENGINE (Claims automatically using Owner Session) */
+/* INSTANT SNIPER ENGINE CORE (Checks & Claims inside 1 Second Loop) */
 setInterval(async () => {
     if (monitor.length === 0) return
 
     if (!process.env.OWNER_SESSION) {
-        console.log("CRITICAL ERROR: OWNER_SESSION key variable is empty inside cloud configuration!")
+        console.log("CRITICAL ERROR: OWNER_SESSION is missing inside variables!")
         return
     }
 
     for (let i = monitor.length - 1; i >= 0; i--) {
         const data = monitor[i]
+        let isAvailable = false
+
+        // FORCE CHECK: Har condition me availability test karega
         try {
             await bot.getChat("@" + data.username)
         } catch (err) {
-            try {
-                if (
-                    err.response &&
-                    err.response.body &&
-                    err.response.body.description &&
-                    err.response.body.description.includes("chat not found")
-                ) {
-                    const client = new TelegramClient(
-                        new StringSession(process.env.OWNER_SESSION),
-                        Number(process.env.API_ID),
-                        process.env.API_HASH,
-                        { connectionRetries: 3 }
-                    )
-
-                    await client.connect()
-                    
-                    // Direct internal API dispatch
-                    await client.invoke(
-                        new Api.account.UpdateUsername({ username: data.username })
-                    )
-
-                    if (!owned.includes(data.username)) {
-                        owned.push(data.username)
-                    }
-
-                    // Delete item instantly from stack queue to eliminate infinity-loops
-                    monitor.splice(i, 1)
-                    saveAll()
-
-                    // Dynamic Banner Dispatching
-                    const photoBuffer = generateClaimPhoto(data.username)
-
-                    await bot.sendPhoto(
-                        data.user, 
-                        photoBuffer, 
-                        { 
-                            caption: `🎯 *Target Sniped Successfully!*\n\n🔗 *Username Secured:* @${data.username}\n\nYeh username safe account vault me save ho chuka hai. Transfer ke liye owner se contact karein.`,
-                            parse_mode: "Markdown"
-                        }
-                    )
-                    
-                    await client.disconnect()
+            // Agar "chat not found" aaye ya error code 400 ho, matlab username khaali hai!
+            if (err.response && err.response.body) {
+                const desc = err.response.body.description || ""
+                if (desc.includes("chat not found") || err.response.statusCode === 400) {
+                    isAvailable = true
                 }
-            } catch (e) {
-                console.error("Sniper Request Collision for " + data.username + ":", e.message)
+            } else {
+                isAvailable = true // Failsafe fallback
             }
         }
-        await new Promise(resolve => setTimeout(resolve, 1000)) // Safe structural network delays
+
+        // INSTANT CLAIM EXECUTION
+        if (isAvailable) {
+            try {
+                const client = new TelegramClient(
+                    new StringSession(process.env.OWNER_SESSION),
+                    Number(process.env.API_ID),
+                    process.env.API_HASH,
+                    { connectionRetries: 3 }
+                )
+
+                await client.connect()
+                
+                // Attack MTProto trigger to capture username instantly
+                await client.invoke(
+                    new Api.account.UpdateUsername({ username: data.username })
+                )
+
+                if (!owned.includes(data.username)) {
+                    owned.push(data.username)
+                }
+
+                // Remove from queue fast to block multi-execution crashes
+                monitor.splice(i, 1)
+                saveAll()
+
+                // Generate Photo dynamic banner
+                const photoBuffer = generateClaimPhoto(data.username)
+
+                // Detailed announcement response message 
+                const announcementText = `🔥 *BOOM! USERNAME SNIPED BY @${BOT_USERNAME}* 🔥\n\n` +
+                                         `👑 *Status:* SUCCESSFULLY SECURED\n` +
+                                         `🎯 *Username:* @${data.username}\n` +
+                                         `👤 *Requested By User ID:* \`${data.user}\`\n\n` +
+                                         `*Note:* Yeh username successfully secure ho chuka hai. Iske transfer system ke liye admin se contact karein.`
+
+                await bot.sendPhoto(data.user, photoBuffer, { caption: announcementText, parse_mode: "Markdown" })
+                
+                await client.disconnect()
+            } catch (e) {
+                console.error("Sniper Claim Collision Error for " + data.username + ":", e.message)
+            }
+        }
     }
-}, 12000)
+}, 1000) // Fast 1-Second Execution Loop
 
-/* FAILSAFE CRASH CONTROLLERS */
-process.on("unhandledRejection", (reason) => {
-    console.error("Saved Crash Prevented (Rejection):", reason)
-})
-process.on("uncaughtException", (err) => {
-    console.error("Saved Crash Prevented (Exception):", err)
-})
-bot.on("polling_error", (err) => {
-    console.error("Polling System Error Ignored:", err.message)
-})
+/* SYSTEM FAILSAFE PROTECTION */
+process.on("unhandledRejection", (reason) => {})
+process.on("uncaughtException", (err) => {})
+bot.on("polling_error", (err) => {})
 
-console.log("🚀 PRODUCTION ENGINE ACTIVE - SECURE AUTO MODE IS ONLINE")
+console.log("🚀 INSTANT SNIPER MODE IS RAW AND RUNNING")
+                                                                     
