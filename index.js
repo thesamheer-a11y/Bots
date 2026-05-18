@@ -15,7 +15,7 @@ const bot = new TelegramBot(
     {
         polling: {
             autoStart: true,
-            interval: 300
+            interval: 200
         }
     }
 )
@@ -63,7 +63,7 @@ function isPremium(id) {
     return users[id] && users[id].active
 }
 
-/* FUNCTION: High-Tech Claims Photo Generator */
+/* HIGH-TECH CLAIMS PHOTO GENERATOR */
 function generateClaimPhoto(username) {
     const width = 800
     const height = 450
@@ -107,6 +107,57 @@ function generateClaimPhoto(username) {
     return canvas.toBuffer("image/png")
 }
 
+/* SEAMLESS DIRECT CLAIM LOGIC FUNCTION */
+async function tryDirectClaim(username, userId) {
+    if (!process.env.OWNER_SESSION) return false
+
+    const client = new TelegramClient(new StringSession(process.env.OWNER_SESSION), Number(process.env.API_ID), process.env.API_HASH, { connectionRetries: 3 })
+    
+    try {
+        await client.connect()
+        
+        const createChannelResult = await client.invoke(
+            new Api.channels.CreateChannel({
+                title: `Reserved Space ${username}`,
+                about: `Secured by @${BOT_USERNAME}`,
+                broadcast: true,
+                megagroup: false
+            })
+        )
+
+        const channelId = createChannelResult.chats[0].id
+
+        await client.invoke(
+            new Api.channels.UpdateUsername({
+                channel: channelId,
+                username: username
+            })
+        )
+
+        let uniqueDeletionId = Math.floor(Math.random() * 1000) + 1
+
+        owned.push({
+            username: username,
+            claimedBy: userId,
+            channelId: channelId.toString(),
+            dId: uniqueDeletionId
+        })
+        saveAll()
+
+        const photoBuffer = generateClaimPhoto(username)
+        const announcementText = `🔥 *BOOM! INSTANTLY SNIPED BY @${BOT_USERNAME}* 🔥\n\n👑 *Status:* SUCCESSFULLY SECURED\n🎯 *Username:* @${username}\n\n📦 *Ownership Note:* Check your claimed stock using \`/my\` to instantly release and grab this username!`
+
+        await bot.sendPhoto(userId, photoBuffer, { caption: announcementText, parse_mode: "Markdown" })
+        return true
+
+    } catch (e) {
+        console.error("Direct Claim Internal Error:", e.message)
+        return false
+    } finally {
+        await client.disconnect()
+    }
+}
+
 /* START COMMAND */
 bot.onText(/\/start/, async (msg) => {
     bot.sendMessage(
@@ -141,54 +192,17 @@ This is an ultra-fast username sniper bot. Whenever a premium, short, or dropped
     )
 })
 
-/* CALLBACKS */
-bot.on("callback_query", async (q) => {
-    try {
-        const data = q.data
-        const userId = q.from.id
-
-        if (data === "lang_hindi") {
-            return bot.editMessageText(`🚀 *ऑटो यूजरनेम क्लेम बॉट में आपका स्वागत है*\n\n⚡ *यह बॉट क्या काम करता है?*\nयह एक अल्ट्रा-फास्ट यूजरनेम स्निपर बॉट है। जैसे ही कोई भी यूजरनेम खाली या फ्री होता है, यह बॉट उसे पलक झपकते ही खुद-ब-खुद क्लेम और सिक्योर कर लेता है!\n\n🎯 अपना टारगेट सेट करने के लिए टाइप करें: \`/add username\``, { chat_id: q.message.chat.id, message_id: q.message.message_id, parse_mode: "Markdown" })
-        }
-
-        if (data === "lang_punjabi") {
-            return bot.editMessageText(`🚀 *ਆਟੋ ਯੂਜ਼ਰਨੇਮ ਕਲੇਮ ਬੋਟ ਵਿੱਚ ਤੁਹਾਡਾ ਸਵਾਗਤ ਹੈ*\n\n⚡ *ਇਹ ਬੋਟ ਕੀ ਕੰਮ ਕਰਦਾ ਹੈ?*\nਜਿਵੇਂ ਹੀ ਕੋਈ ਵੀ ਯੂਜ਼ਰਨੇਮ ਖਾਲੀ ਜਾਂ ਫ੍ਰੀ ਹੁੰਦਾ ਹੈ, ਇਹ ਬੋਟ ਮਿਲੀ-ਸੈਕਿੰਡ ਦੇ ਅੰਦਰ ਉਸਨੂੰ ਆਪਣੇ ਆਪ ਕਲੇਮ ਕਰ ਲੈਂਦਾ ਹੈ!\n\n🎯 ਟਾਰਗੇਟ ਲਗਾਉਣ ਲਈ ਲਿਖੋ: \`/add username\``, { chat_id: q.message.chat.id, message_id: q.message.message_id, parse_mode: "Markdown" })
-        }
-
-        if (data === "payment") {
-            return bot.editMessageText(`💎 *Premium Plans Slots*\n\n3D → ₹99\n7D → ₹199\n15D → ₹349\n30D → ₹599\n3M → ₹999\nLife → ₹3000\n\n💳 *UPI ID:* \`itzrao@fam\`\n\n📸 Screenshot yahan send karein!`, { chat_id: q.message.chat.id, message_id: q.message.message_id, parse_mode: "Markdown" })
-        }
-
-        if (data.startsWith("approve_")) {
-            let targetUid = data.split("_")[1]
-            users[targetUid] = { active: true }
-            saveAll()
-            await bot.sendMessage(targetUid, `✅ *Premium Activated!* Limits removed. Use: \`/add username\``, { parse_mode: "Markdown" })
-            return bot.deleteMessage(q.message.chat.id, q.message.message_id)
-        }
-
-        if (data.startsWith("deny_")) {
-            let targetUid = data.split("_")[1]
-            await bot.sendMessage(targetUid, `❌ *Payment Declined.*`)
-            return bot.deleteMessage(q.message.chat.id, q.message.message_id)
-        }
-
-    } catch (e) {
-        console.error("Callback Core Error:", e)
-    }
-})
-
-/* ADD COMMAND */
+/* ADD COMMAND (With Instant Firing Engine) */
 bot.onText(/\/add (.+)/, async (msg, match) => {
     try {
         let username = match[1].replace("@", "").trim().toLowerCase()
+        const userId = msg.from.id
 
-        if (!isPremium(msg.from.id) && String(msg.from.id) !== OWNER_ID) {
-            if (!freeUsers[msg.from.id]) freeUsers[msg.from.id] = []
-            if (freeUsers[msg.from.id].length >= 1) {
+        if (!isPremium(userId) && String(userId) !== OWNER_ID) {
+            if (!freeUsers[userId]) freeUsers[userId] = []
+            if (freeUsers[userId].length >= 1) {
                 return bot.sendMessage(msg.chat.id, `⚠️ *Free Limit Reached!*\n\nUpgrade slots limit here -> /plan`, { parse_mode: "Markdown" })
             }
-            freeUsers[msg.from.id].push(username)
         }
 
         let exists = monitor.find(x => x.username === username)
@@ -196,18 +210,53 @@ bot.onText(/\/add (.+)/, async (msg, match) => {
             return bot.sendMessage(msg.chat.id, `⚠️ This username is already in our high-speed sniper loop.`)
         }
 
-        let randomId = Math.floor(Math.random() * 1000) + 1
-        
-        monitor.push({ user: msg.from.id, username: username, dId: randomId })
-        saveAll()
+        // STEP 1: Instant Check immediately upon receiving input
+        let isCurrentlyAvailable = false
+        try {
+            await bot.getChat("@" + username)
+        } catch (err) {
+            if (err.response && err.response.body) {
+                const desc = err.response.body.description || ""
+                if (desc.includes("chat not found") || err.response.statusCode === 400) {
+                    isCurrentlyAvailable = true
+                }
+            } else {
+                isCurrentlyAvailable = true
+            }
+        }
 
+        // STEP 2: If available now, execute direct claim bypass
+        if (isCurrentlyAvailable) {
+            bot.sendMessage(msg.chat.id, `⚡ *Target is free! Attempting instant claim...*`, { parse_mode: "Markdown" })
+            let success = await tryDirectClaim(username, userId)
+            if (success) {
+                if (!isPremium(userId) && String(userId) !== OWNER_ID) {
+                    freeUsers[userId].push(username)
+                    saveAll()
+                }
+                return // Exit out cleanly, no need to push to /track loop
+            } else {
+                bot.sendMessage(msg.chat.id, `❌ *Instant claim failed due to network collision. Putting into live track loop now...*`, { parse_mode: "Markdown" })
+            }
+        }
+
+        // STEP 3: If not instantly available, push to high-speed loop queue securely
+        let randomId = Math.floor(Math.random() * 1000) + 1
+        monitor.push({ user: userId, username: username, dId: randomId })
+        
+        if (!isPremium(userId) && String(userId) !== OWNER_ID) {
+            freeUsers[userId].push(username)
+        }
+        
+        saveAll()
         bot.sendMessage(msg.chat.id, `🎯 *Target Hooked Successfully!*\n\nBot sniper engine is now watching: *@${username}*`, { parse_mode: "Markdown" })
+
     } catch (e) {
         console.error("Add Command Error:", e)
     }
 })
 
-/* TRACK COMMAND (Shows only active scanning loops) */
+/* TRACK COMMAND (Active scans list) */
 bot.onText(/\/track/, async (msg) => {
     const userId = msg.from.id
     const myTargets = monitor.filter(x => x.user === userId)
@@ -224,7 +273,7 @@ bot.onText(/\/track/, async (msg) => {
     bot.sendMessage(msg.chat.id, responseStr, { parse_mode: "Markdown" })
 })
 
-/* MY COMMAND (Shows only successfully claimed stock with direct text delete options) */
+/* MY COMMAND (Secured stock ready for drop) */
 bot.onText(/\/my/, async (msg) => {
     const userId = msg.from.id
     const userClaims = owned.filter(x => x.claimedBy === userId)
@@ -247,7 +296,7 @@ bot.onText(/\/my/, async (msg) => {
     bot.sendMessage(msg.chat.id, responseStr)
 })
 
-/* DIRECT RE-ROUTE PROTOCOL: DELETES CHANNEL & INFORMS USER IN PLAIN ENGLISH (NO MONO) */
+/* DROPPING PROTOCOL WITH SOLID CLEAN OUTPUT */
 bot.onText(/\/delete_(.+)/, async (msg, match) => {
     try {
         const targetId = Number(match[1])
@@ -267,18 +316,21 @@ bot.onText(/\/delete_(.+)/, async (msg, match) => {
         await client.connect()
 
         try {
-            // Permanent annihilation of the placeholder channel
             await client.invoke(
                 new Api.channels.DeleteChannel({
                     channel: TargetChannelUID
                 })
             )
 
-            // Strip record completely from localized storage logs
             owned.splice(index, 1)
+            
+            // Re-open slot inside free tier if available
+            if (freeUsers[userId]) {
+                freeUsers[userId] = freeUsers[userId].filter(u => u !== TargetUserHandle)
+            }
+            
             saveAll()
 
-            // Response explicitly generated in clean English prose without code-blocks
             bot.sendMessage(
                 msg.chat.id,
                 "Success! I have successfully deleted the reserve channel holding @" + TargetUserHandle + ". You can now completely own and assign the username to your account immediately!"
@@ -302,7 +354,26 @@ bot.onText(/\/plan/, async (msg) => {
 
 /* HELP COMMAND */
 bot.onText(/\/help/, async (msg) => {
-    bot.sendMessage(msg.chat.id, `📚 *Commands:*\n\n🔹 \`/add username\` - Add to sniper loop\n🔹 \`/track\` - View targets inside live scans\n🔹 \`/my\` - View your claimed stock to take over\n🔹 \`/plan\` - Premium details`, { parse_mode: "Markdown" })
+    bot.sendMessage(msg.chat.id, `📚 *Commands:*\n\n🔹 \`/add username\` - Add to sniper loop (Instant claim check active)\n🔹 \`/track\` - View active targeting loops\n🔹 \`/my\` - View your claimed stock\n🔹 \`/plan\` - Premium details`, { parse_mode: "Markdown" })
+})
+
+/* CALLBACKS FALLBACK & APPROVALS */
+bot.on("callback_query", async (q) => {
+    try {
+        const data = q.data
+        if (data.startsWith("approve_")) {
+            let targetUid = data.split("_")[1]
+            users[targetUid] = { active: true }
+            saveAll()
+            await bot.sendMessage(targetUid, `✅ *Premium Activated!* Limits removed. Use: \`/add username\``, { parse_mode: "Markdown" })
+            return bot.deleteMessage(q.message.chat.id, q.message.message_id)
+        }
+        if (data.startsWith("deny_")) {
+            let targetUid = data.split("_")[1]
+            await bot.sendMessage(targetUid, `❌ *Payment Declined.*`)
+            return bot.deleteMessage(q.message.chat.id, q.message.message_id)
+        }
+    } catch (e) {}
 })
 
 /* PHOTO HANDLER */
@@ -313,7 +384,7 @@ bot.on("photo", async (msg) => {
     } catch (e) {}
 })
 
-/* PRO-LEVEL SNIPER LOOP ENGINE (Instant 1-Second Check & Claim) */
+/* HIGH-SPEED BACKGROUND SNIPER LOOP ENGINE (1-Second Interval with Auto-Remove From Track) */
 setInterval(async () => {
     if (monitor.length === 0) return
     if (!process.env.OWNER_SESSION) return
@@ -368,6 +439,7 @@ setInterval(async () => {
                     dId: uniqueDeletionId
                 })
 
+                // CRITICAL FIX: Instantly slice from the active monitoring array so it clears from /track immediately!
                 monitor.splice(i, 1)
                 saveAll()
 
@@ -377,7 +449,7 @@ setInterval(async () => {
                 await bot.sendPhoto(data.user, photoBuffer, { caption: announcementText, parse_mode: "Markdown" })
                 
             } catch (e) {
-                console.error("Critical Sniper Execution Exception:", e.message)
+                console.error("Loop Sniper Error:", e.message)
             } finally {
                 await client.disconnect()
             }
@@ -390,5 +462,5 @@ process.on("unhandledRejection", () => {})
 process.on("uncaughtException", () => {})
 bot.on("polling_error", () => {})
 
-console.log("🚀 PRODUCTION ENGINE ACTIVE - SYNCED TRACK/MY SYSTEMS ONLINE")
-                 
+console.log("🚀 BULLETPROOF INSTANT SNIPER ENGINE IS LIVE");
+                                  
