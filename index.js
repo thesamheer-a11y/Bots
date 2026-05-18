@@ -3,66 +3,97 @@ require("dotenv").config()
 const TelegramBot = require("node-telegram-bot-api")
 const fs = require("fs")
 
-const { TelegramClient } = require("telegram")
-const { Api } = require("telegram/tl")
-const { StringSession } = require("telegram/sessions")
+/* FIXED IMPORTS */
 
-const bot = new TelegramBot(process.env.BOT_TOKEN,{
-polling:true
-})
+const { TelegramClient } = require("telegram")
+const { StringSession } = require("telegram/sessions")
+const { Api } = require("telegram/tl")
+
+/* BOT */
+
+const bot = new TelegramBot(
+process.env.BOT_TOKEN,
+{
+polling: {
+autoStart: true,
+interval: 300
+}
+}
+)
+
+/* OWNER */
 
 const OWNER_ID = "8715707181"
 
+/* SAFE JSON LOAD */
+
+function loadJSON(file, def){
+
+try{
+
+if(fs.existsSync(file)){
+
+return JSON.parse(
+fs.readFileSync(file)
+)
+
+}
+
+return def
+
+}catch{
+
+return def
+
+}
+
+}
+
 /* DATABASE */
 
-let users = fs.existsSync("users.json")
-? JSON.parse(fs.readFileSync("users.json"))
-: {}
+let users = loadJSON(
+"users.json",
+{}
+)
 
-let monitor = fs.existsSync("monitor.json")
-? JSON.parse(fs.readFileSync("monitor.json"))
-: []
+let monitor = loadJSON(
+"monitor.json",
+[]
+)
 
-let owned = fs.existsSync("owned.json")
-? JSON.parse(fs.readFileSync("owned.json"))
-: []
+let owned = loadJSON(
+"owned.json",
+[]
+)
 
-let sessions = fs.existsSync("sessions.json")
-? JSON.parse(fs.readFileSync("sessions.json"))
-: {}
+let sessions = loadJSON(
+"sessions.json",
+{}
+)
 
-let freeUsers = fs.existsSync("freeUsers.json")
-? JSON.parse(fs.readFileSync("freeUsers.json"))
-: {}
+let freeUsers = loadJSON(
+"freeUsers.json",
+{}
+)
 
 /* SAVE */
 
-function saveData(){
+function save(file,data){
 
 fs.writeFileSync(
-"users.json",
-JSON.stringify(users,null,2)
+file,
+JSON.stringify(data,null,2)
 )
 
-fs.writeFileSync(
-"monitor.json",
-JSON.stringify(monitor,null,2)
-)
+}
 
-fs.writeFileSync(
-"owned.json",
-JSON.stringify(owned,null,2)
-)
+function saveAll(){
 
-fs.writeFileSync(
-"sessions.json",
-JSON.stringify(sessions,null,2)
-)
-
-fs.writeFileSync(
-"freeUsers.json",
-JSON.stringify(freeUsers,null,2)
-)
+save("users.json",users)
+save("monitor.json",monitor)
+save("owned.json",owned)
+save("sessions.json",sessions)
+save("freeUsers.json",freeUsers)
 
 }
 
@@ -70,7 +101,9 @@ JSON.stringify(freeUsers,null,2)
 
 function isPremium(id){
 
-if(String(id) == OWNER_ID) return true
+if(String(id) === OWNER_ID){
+return true
+}
 
 return users[id] && users[id].active
 
@@ -78,7 +111,7 @@ return users[id] && users[id].active
 
 /* START */
 
-bot.onText(/\/start/, async (msg)=>{
+bot.onText(/\/start/, async(msg)=>{
 
 bot.sendMessage(
 msg.chat.id,
@@ -86,12 +119,8 @@ msg.chat.id,
 
 ⚡ Auto Username Claim Bot
 
-• Auto Claim
-• Fast Monitoring
-• Premium System
-
-👤 Free: 1 Username
-💎 Premium: Unlimited`,
+👤 Free → 1 Username
+💎 Premium → Unlimited`,
 {
 reply_markup:{
 inline_keyboard:[
@@ -118,27 +147,23 @@ callback_data:"payment"
 
 })
 
-/* CALLBACK */
+/* CALLBACKS */
 
 bot.on("callback_query", async(q)=>{
 
+try{
+
 const data = q.data
 
-/* HINDI */
-
-if(data == "lang_hindi"){
+if(data === "lang_hindi"){
 
 return bot.editMessageText(
 `🚀 यूजरनेम मैनेजर
 
 ⚡ ऑटो यूजरनेम क्लेम बॉट
 
-• ऑटो क्लेम
-• फास्ट मॉनिटरिंग
-• प्रीमियम सिस्टम
-
-👤 फ्री: 1 यूजरनेम
-💎 प्रीमियम: अनलिमिटेड`,
+👤 फ्री → 1 यूजरनेम
+💎 प्रीमियम → अनलिमिटेड`,
 {
 chat_id:q.message.chat.id,
 message_id:q.message.message_id,
@@ -167,21 +192,15 @@ callback_data:"payment"
 
 }
 
-/* PUNJABI */
-
-if(data == "lang_punjabi"){
+if(data === "lang_punjabi"){
 
 return bot.editMessageText(
 `🚀 ਯੂਜ਼ਰਨੇਮ ਮੈਨੇਜਰ
 
 ⚡ ਆਟੋ ਯੂਜ਼ਰਨੇਮ ਕਲੇਮ ਬੋਟ
 
-• ਆਟੋ ਕਲੇਮ
-• ਫਾਸਟ ਮਾਨੀਟਰਿੰਗ
-• ਪ੍ਰੀਮੀਅਮ ਸਿਸਟਮ
-
-👤 ਫ੍ਰੀ: 1 ਯੂਜ਼ਰਨੇਮ
-💎 ਪ੍ਰੀਮੀਅਮ: ਅਨਲਿਮਿਟਡ`,
+👤 ਫ੍ਰੀ → 1 ਯੂਜ਼ਰਨੇਮ
+💎 ਪ੍ਰੀਮੀਅਮ → ਅਨਲਿਮਿਟਡ`,
 {
 chat_id:q.message.chat.id,
 message_id:q.message.message_id,
@@ -210,9 +229,7 @@ callback_data:"payment"
 
 }
 
-/* PAYMENT */
-
-if(data == "payment"){
+if(data === "payment"){
 
 return bot.editMessageText(
 `💎 Premium Plans
@@ -227,64 +244,11 @@ Life → ₹3000
 💳 UPI:
 \`itzrao@fam\`
 
-📸 Send Screenshot After Payment`,
+📸 Send Screenshot`,
 {
 chat_id:q.message.chat.id,
 message_id:q.message.message_id,
-parse_mode:"Markdown",
-reply_markup:{
-inline_keyboard:[
-[
-{
-text:"⬅️ Back",
-callback_data:"back_start"
-}
-]
-]
-}
-}
-)
-
-}
-
-/* BACK */
-
-if(data == "back_start"){
-
-return bot.editMessageText(
-`🚀 Username Manager
-
-⚡ Auto Username Claim Bot
-
-• Auto Claim
-• Fast Monitoring
-• Premium System
-
-👤 Free: 1 Username
-💎 Premium: Unlimited`,
-{
-chat_id:q.message.chat.id,
-message_id:q.message.message_id,
-reply_markup:{
-inline_keyboard:[
-[
-{
-text:"🇮🇳 Hindi",
-callback_data:"lang_hindi"
-},
-{
-text:"🇵🇰 Punjabi",
-callback_data:"lang_punjabi"
-}
-],
-[
-{
-text:"💎 Plans",
-callback_data:"payment"
-}
-]
-]
-}
+parse_mode:"Markdown"
 }
 )
 
@@ -300,34 +264,22 @@ users[userId] = {
 active:true
 }
 
-saveData()
+saveAll()
 
 await bot.sendMessage(
 userId,
 `✅ Premium Activated
 
-🚀 Setup Guide
+/login
+Then Send Session
 
-1. Use /login
-2. Send String Session
-3. Use:
-/add username
-
-Example:
-/add example
-
-⚡ Bot Auto Claims
-When Username Gets Free`
+/add username`
 )
 
-try{
-
-await bot.deleteMessage(
+return bot.deleteMessage(
 q.message.chat.id,
 q.message.message_id
 )
-
-}catch(e){}
 
 }
 
@@ -342,14 +294,16 @@ userId,
 `❌ Payment Declined`
 )
 
-try{
-
-await bot.deleteMessage(
+return bot.deleteMessage(
 q.message.chat.id,
 q.message.message_id
 )
 
-}catch(e){}
+}
+
+}catch(e){
+
+console.log(e)
 
 }
 
@@ -375,20 +329,29 @@ force_reply:true
 
 bot.on("message", async(msg)=>{
 
+try{
+
 if(
 msg.reply_to_message &&
 msg.reply_to_message.text &&
 msg.reply_to_message.text.includes("String Session")
 ){
 
-sessions[msg.from.id] = msg.text.trim()
+sessions[msg.from.id] =
+msg.text.trim()
 
-saveData()
+saveAll()
 
 bot.sendMessage(
 msg.chat.id,
 `✅ Account Linked`
 )
+
+}
+
+}catch(e){
+
+console.log(e)
 
 }
 
@@ -398,15 +361,15 @@ msg.chat.id,
 
 bot.onText(/\/add (.+)/, async(msg,match)=>{
 
+try{
+
 let username = match[1]
 .replace("@","")
 .trim()
 .toLowerCase()
 
-/* LOGIN CHECK */
-
 if(
-String(msg.from.id) != OWNER_ID &&
+String(msg.from.id) !== OWNER_ID &&
 !sessions[msg.from.id]
 ){
 
@@ -414,17 +377,14 @@ return bot.sendMessage(
 msg.chat.id,
 `🔐 Login First
 
-Use:
 /login`
 )
 
 }
 
-/* FREE LIMIT */
-
 if(
 !isPremium(msg.from.id) &&
-String(msg.from.id) != OWNER_ID
+String(msg.from.id) !== OWNER_ID
 ){
 
 if(!freeUsers[msg.from.id]){
@@ -437,34 +397,18 @@ if(freeUsers[msg.from.id].length >= 1){
 
 return bot.sendMessage(
 msg.chat.id,
-`⚠️ Free Limit Reached
-
-💎 Upgrade:
-/plan`,
-{
-reply_markup:{
-inline_keyboard:[
-[
-{
-text:"Buy Premium",
-callback_data:"payment"
-}
-]
-]
-}
-}
+`⚠️ Free Limit Reached`
 )
 
 }
 
-freeUsers[msg.from.id].push(username)
+freeUsers[msg.from.id]
+.push(username)
 
 }
 
-/* DUPLICATE */
-
 let exists = monitor.find(
-x=>x.username == username
+x=>x.username === username
 )
 
 if(exists){
@@ -476,21 +420,25 @@ msg.chat.id,
 
 }
 
-/* ADD */
-
 monitor.push({
 user:msg.from.id,
 username:username
 })
 
-saveData()
+saveAll()
 
 bot.sendMessage(
 msg.chat.id,
 `✅ Monitoring Started
 
-👤 @${username}`
+@${username}`
 )
+
+}catch(e){
+
+console.log(e)
+
+}
 
 })
 
@@ -524,23 +472,6 @@ callback_data:"payment"
 
 })
 
-/* FREE */
-
-bot.onText(/\/free/, async(msg)=>{
-
-bot.sendMessage(
-msg.chat.id,
-`👤 Free Plan
-
-• 1 Username
-• Basic Monitoring
-
-💎 Premium:
-Unlimited Usernames`
-)
-
-})
-
 /* HELP */
 
 bot.onText(/\/help/, async(msg)=>{
@@ -558,16 +489,20 @@ msg.chat.id,
 
 })
 
-/* PAYMENT SCREENSHOT */
+/* PAYMENT PHOTO */
 
 bot.on("photo", async(msg)=>{
 
+try{
+
 await bot.sendPhoto(
 OWNER_ID,
-msg.photo[msg.photo.length - 1].file_id,
+msg.photo[
+msg.photo.length - 1
+].file_id,
 {
 caption:
-`💳 New Payment
+`💳 Payment
 
 👤 ${msg.from.id}`,
 reply_markup:{
@@ -575,11 +510,13 @@ inline_keyboard:[
 [
 {
 text:"Approve",
-callback_data:`approve_${msg.from.id}`
+callback_data:
+`approve_${msg.from.id}`
 },
 {
 text:"Deny",
-callback_data:`deny_${msg.from.id}`
+callback_data:
+`deny_${msg.from.id}`
 }
 ]
 ]
@@ -591,6 +528,12 @@ bot.sendMessage(
 msg.chat.id,
 `📸 Screenshot Sent`
 )
+
+}catch(e){
+
+console.log(e)
+
+}
 
 })
 
@@ -614,23 +557,23 @@ if(
 err.response &&
 err.response.body &&
 err.response.body.description &&
-err.response.body.description.includes("chat not found")
+err.response.body.description
+.includes("chat not found")
 ){
 
-if(!sessions[data.user]) continue
-
-const stringSession =
-new StringSession(
-sessions[data.user]
-)
+if(!sessions[data.user]){
+continue
+}
 
 const client =
 new TelegramClient(
-stringSession,
+new StringSession(
+sessions[data.user]
+),
 Number(process.env.API_ID),
 process.env.API_HASH,
 {
-connectionRetries:5
+connectionRetries:3
 }
 )
 
@@ -642,11 +585,13 @@ username:data.username
 })
 )
 
-if(!owned.includes(data.username)){
+if(
+!owned.includes(data.username)
+){
 
 owned.push(data.username)
 
-saveData()
+saveAll()
 
 }
 
@@ -655,48 +600,37 @@ data.user,
 `🎉 Claimed @${data.username}`
 )
 
-await bot.sendMessage(
-OWNER_ID,
-`✅ Claimed @${data.username}`
-)
-
 await client.disconnect()
 
 }
 
-}catch(claimErr){
+}catch(e){
 
-console.log(claimErr)
-
-}
+console.log(e)
 
 }
 
 }
 
-},5000)
+}
 
-/* ERROR FIX */
+},10000)
+
+/* ERRORS */
 
 process.on(
 "unhandledRejection",
-err=>{
-console.log(err)
-}
+console.log
 )
 
 process.on(
 "uncaughtException",
-err=>{
-console.log(err)
-}
+console.log
 )
 
 bot.on(
 "polling_error",
-err=>{
-console.log(err)
-}
+console.log
 )
 
 console.log("BOT STARTED")
