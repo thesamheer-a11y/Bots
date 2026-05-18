@@ -2,6 +2,7 @@ require("dotenv").config()
 
 const TelegramBot = require("node-telegram-bot-api")
 const fs = require("fs")
+const { createCanvas } = require("canvas") // High-quality image creation
 
 /* FIXED IMPORTS */
 const { TelegramClient } = require("telegram")
@@ -20,6 +21,7 @@ const bot = new TelegramBot(
 )
 
 const OWNER_ID = "8715707181"
+const BOT_USERNAME = "userownerbot" // Banner credit username
 
 /* SAFE JSON LOAD */
 function loadJSON(file, def) {
@@ -40,11 +42,7 @@ function loadJSON(file, def) {
 let users = loadJSON("users.json", {})
 let monitor = loadJSON("monitor.json", [])
 let owned = loadJSON("owned.json", [])
-let sessions = loadJSON("sessions.json", {})
 let freeUsers = loadJSON("freeUsers.json", {})
-
-// In-memory states for multi-step OTP login
-let loginStates = {}
 
 /* SAVE DATA */
 function save(file, data) {
@@ -59,7 +57,6 @@ function saveAll() {
     save("users.json", users)
     save("monitor.json", monitor)
     save("owned.json", owned)
-    save("sessions.json", sessions)
     save("freeUsers.json", freeUsers)
 }
 
@@ -69,12 +66,63 @@ function isPremium(id) {
     return users[id] && users[id].active
 }
 
+/* FUNCTION: High-Tech Claims Photo Generator */
+function generateClaimPhoto(username) {
+    const width = 800
+    const height = 450
+    const canvas = createCanvas(width, height)
+    const ctx = canvas.getContext("2d")
+
+    // Dark Tech Gradient Background
+    const gradient = ctx.createLinearGradient(0, 0, width, height)
+    gradient.addColorStop(0, "#0f172a") 
+    gradient.addColorStop(1, "#1e1b4b") 
+    ctx.fillStyle = gradient
+    ctx.fillRect(0, 0, width, height)
+
+    // Glow effect shapes
+    ctx.fillStyle = "rgba(99, 102, 241, 0.12)"
+    ctx.beginPath()
+    ctx.arc(width - 80, 120, 160, 0, Math.PI * 2)
+    ctx.fill()
+
+    // Title Badge
+    ctx.fillStyle = "#22c55e" 
+    ctx.font = "bold 28px sans-serif"
+    ctx.fillText("🎉 SUCCESSFULLY CLAIMED", 60, 130)
+
+    // Main Claimed Username
+    ctx.fillStyle = "#ffffff"
+    ctx.font = "bold 52px sans-serif"
+    ctx.fillText(`@${username}`, 60, 225)
+
+    // Elegant separator line
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.15)"
+    ctx.lineWidth = 2
+    ctx.beginPath()
+    ctx.moveTo(60, 285)
+    ctx.lineTo(width - 60, 285)
+    ctx.stroke()
+
+    // Powered By Section
+    ctx.fillStyle = "#94a3b8" 
+    ctx.font = "22px sans-serif"
+    ctx.fillText("Powered by", 60, 340)
+
+    ctx.fillStyle = "#6366f1" 
+    ctx.font = "bold 26px sans-serif"
+    ctx.fillText(`@${BOT_USERNAME}`, 60, 380)
+
+    return canvas.toBuffer("image/png")
+}
+
 /* START COMMAND */
 bot.onText(/\/start/, async (msg) => {
     bot.sendMessage(
         msg.chat.id,
-        `🚀 Username Manager\n\n⚡ Auto Username Claim Bot\n\n👤 Free → 1 Username\n💎 Premium → Unlimited`,
+        `🚀 *Username Sniper Manager*\n\n🔥 *No Login Required!* Ab aapko apna account number ya OTP dene ki koi zaroorat nahi hai. Bot seedhe aapke liye username secure karega!\n\n👤 Free User → 1 Slot Limit\n💎 Premium User → Unlimited Slots`,
         {
+            parse_mode: "Markdown",
             reply_markup: {
                 inline_keyboard: [
                     [
@@ -82,7 +130,7 @@ bot.onText(/\/start/, async (msg) => {
                         { text: "🇵🇰 Punjabi", callback_data: "lang_punjabi" }
                     ],
                     [
-                        { text: "💎 Plans", callback_data: "payment" }
+                        { text: "💎 Premium Plans", callback_data: "payment" }
                     ]
                 ]
             }
@@ -97,10 +145,11 @@ bot.on("callback_query", async (q) => {
 
         if (data === "lang_hindi") {
             return bot.editMessageText(
-                `🚀 यूजरनेम मैनेजर\n\n⚡ ऑटो यूजरनेम क्लेम बॉट\n\n👤 फ्री → 1 यूजरनेम\n💎 प्रीमियम → अनलिमिटेड`,
+                `🚀 *यूजरनेम स्निपर मैनेजर*\n\n🔥 *लॉगिन की कोई आवश्यकता नहीं!* बस अपना पसंदीदा यूजरनेम जोड़ें और बॉट उसे खुद-ब-खुद आपके लिए क्लेम कर लेगा।\n\n👤 फ्री यूजर → 1 यूजरनेम\n💎 प्रीमियम यूजर → अनलिमिटेड`,
                 {
                     chat_id: q.message.chat.id,
                     message_id: q.message.message_id,
+                    parse_mode: "Markdown",
                     reply_markup: {
                         inline_keyboard: [
                             [
@@ -118,10 +167,11 @@ bot.on("callback_query", async (q) => {
 
         if (data === "lang_punjabi") {
             return bot.editMessageText(
-                `🚀 ਯੂਜ਼ਰਨੇਮ ਮੈਨੇਜਰ\n\n⚡ ਆਟੋ ਯੂਜ਼ਰਨੇਮ ਕਲੇਮ ਬੋਟ\n\n👤 ਫ੍ਰੀ → 1 ਯੂਜ਼ਰਨੇਮ\n💎 ਪ੍ਰੀਮੀਅਮ → ਅਨਲਿਮਿਟਡ`,
+                `🚀 *ਯੂਜ਼ਰਨੇਮ ਸਨਾਈਪਰ ਮੈਨੇਜਰ*\n\n🔥 *ਕੋਈ ਲੋਗਿਨ ਲੋੜ ਨਹੀਂ!* ਬਸ ਆਪਣਾ ਯੂਜ਼ਰਨੇਮ ਜੋੜੋ, ਬੋਟ ਆਪਣੇ ਆਪ ਕਲੇਮ ਕਰੇਗਾ।\n\n👤 ਫ੍ਰੀ → 1 ਯੂਜ਼ਰਨੇਮ\n💎 ਪ੍ਰੀਮੀਅਮ → ਅਨਲਿਮਿਟਡ`,
                 {
                     chat_id: q.message.chat.id,
                     message_id: q.message.message_id,
+                    parse_mode: "Markdown",
                     reply_markup: {
                         inline_keyboard: [
                             [
@@ -139,7 +189,7 @@ bot.on("callback_query", async (q) => {
 
         if (data === "payment") {
             return bot.editMessageText(
-                `💎 Premium Plans\n\n3D → ₹99\n7D → ₹199\n15D → ₹349\n30D → ₹599\n3M → ₹999\nLife → ₹3000\n\n💳 UPI:\n\`itzrao@fam\`\n\n📸 Send Screenshot`,
+                `💎 *Premium Plans*\n\n3D → ₹99\n7D → ₹199\n15D → ₹349\n30D → ₹599\n3M → ₹999\nLife → ₹3000\n\n💳 *UPI ID:* \`itzrao@fam\`\n\n📸 Screenshot yahan send karein!`,
                 {
                     chat_id: q.message.chat.id,
                     message_id: q.message.message_id,
@@ -153,16 +203,13 @@ bot.on("callback_query", async (q) => {
             users[userId] = { active: true }
             saveAll()
 
-            await bot.sendMessage(
-                userId,
-                `✅ Premium Activated\n\nUse /login to link your account.`
-            )
+            await bot.sendMessage(userId, `✅ *Premium Activated!*\n\nAapki limits hatadi gayi hain. Ab use karein: \`/add username\``, { parse_mode: "Markdown" })
             return bot.deleteMessage(q.message.chat.id, q.message.message_id)
         }
 
         if (data.startsWith("deny_")) {
             let userId = data.split("_")[1]
-            await bot.sendMessage(userId, `❌ Payment Declined`)
+            await bot.sendMessage(userId, `❌ *Payment Declined.* Dubara check karke bhejien.`)
             return bot.deleteMessage(q.message.chat.id, q.message.message_id)
         }
 
@@ -171,212 +218,96 @@ bot.on("callback_query", async (q) => {
     }
 })
 
-/* NEW OTP LOGIN HANDLER */
-bot.onText(/\/login/, async (msg) => {
-    const userId = msg.from.id;
-    loginStates[userId] = { step: "AWAITING_NUMBER" };
-    
-    bot.sendMessage(
-        msg.chat.id,
-        `📱 Please send your Telegram Phone Number with Country Code.\n\nExample: \`+919876543210\``,
-        { parse_mode: "Markdown", reply_markup: { force_reply: true } }
-    )
-})
-
-/* DYNAMIC MESSAGE HANDLER FOR STEPS (NUMBER -> OTP) */
-bot.on("message", async (msg) => {
-    try {
-        const userId = msg.from.id
-        const text = msg.text ? msg.text.trim() : ""
-        const state = loginStates[userId]
-
-        if (!state) return; // Exit if user is not in a login flow
-
-        // STEP 1: Process Phone Number & Send OTP via GramJS
-        if (state.step === "AWAITING_NUMBER") {
-            if (!text.startsWith("+")) {
-                return bot.sendMessage(msg.chat.id, "❌ Invalid format. Please include country code starting with +")
-            }
-
-            await bot.sendMessage(msg.chat.id, "⏳ Requesting OTP from Telegram... Please wait.")
-            
-            const client = new TelegramClient(
-                new StringSession(""),
-                Number(process.env.API_ID),
-                process.env.API_HASH,
-                { connectionRetries: 3 }
-            )
-
-            await client.connect()
-
-            try {
-                const { phoneCodeHash } = await client.sendCode(
-                    { apiId: Number(process.env.API_ID), apiHash: process.env.API_HASH },
-                    text
-                )
-
-                // Save details to state memory
-                loginStates[userId] = {
-                    step: "AWAITING_OTP",
-                    phoneNumber: text,
-                    phoneCodeHash: phoneCodeHash,
-                    client: client
-                }
-
-                return bot.sendMessage(
-                    msg.chat.id,
-                    `📩 OTP Sent successfully to your Telegram account!\n\nPlease reply with the OTP code.`,
-                    { reply_markup: { force_reply: true } }
-                )
-            } catch (err) {
-                await client.disconnect()
-                delete loginStates[userId]
-                return bot.sendMessage(msg.chat.id, `❌ Failed to send code: ${err.message}`)
-            }
-        }
-
-        // STEP 2: Process OTP & Generate Session String
-        if (state.step === "AWAITING_OTP") {
-            const client = state.client
-            await bot.sendMessage(msg.chat.id, "⚡ Verifying OTP and signing in...")
-
-            try {
-                await client.signIn({
-                    phoneNumber: state.phoneNumber,
-                    phoneCodeHash: state.phoneCodeHash,
-                    phoneCode: text
-                })
-
-                // Create persistent Session String
-                const sessionString = client.session.save()
-                sessions[userId] = sessionString
-                saveAll()
-
-                delete loginStates[userId]
-                await bot.sendMessage(msg.chat.id, `✅ Account successfully linked!\n\nNow you can monitor usernames using:\n\`/add username\``)
-                await client.disconnect()
-            } catch (err) {
-                // Check if 2-Step Verification password is required
-                if (err.message.includes("PASSWORD_MISSING")) {
-                    loginStates[userId].step = "AWAITING_PASSWORD"
-                    return bot.sendMessage(
-                        msg.chat.id,
-                        `🔒 Your account has 2-Step Verification enabled. Please reply with your Cloud Password:`,
-                        { reply_markup: { force_reply: true } }
-                    )
-                } else {
-                    await client.disconnect()
-                    delete loginStates[userId]
-                    return bot.sendMessage(msg.chat.id, `❌ Verification Failed: ${err.message}\n\nPlease try /login again.`)
-                }
-            }
-        }
-
-        // STEP 3: Handle Password if 2FA is active
-        if (state.step === "AWAITING_PASSWORD") {
-            const client = state.client
-            try {
-                await client.signIn({
-                    password: text
-                })
-
-                const sessionString = client.session.save()
-                sessions[userId] = sessionString
-                saveAll()
-
-                delete loginStates[userId]
-                await bot.sendMessage(msg.chat.id, `✅ Account successfully linked with 2FA Check!\n\nNow use:\n\`/add username\``)
-                await client.disconnect()
-            } catch (err) {
-                await client.disconnect()
-                delete loginStates[userId]
-                return bot.sendMessage(msg.chat.id, `❌ Incorrect Password or Error: ${err.message}\n\nPlease retry via /login.`)
-            }
-        }
-
-    } catch (e) {
-        console.error("State Processing Error:", e)
-    }
-})
-
 /* ADD COMMAND */
 bot.onText(/\/add (.+)/, async (msg, match) => {
     try {
         let username = match[1].replace("@", "").trim().toLowerCase()
-
-        if (String(msg.from.id) !== OWNER_ID && !sessions[msg.from.id]) {
-            return bot.sendMessage(msg.chat.id, `🔐 Login First\n\n/login`)
-        }
 
         if (!isPremium(msg.from.id) && String(msg.from.id) !== OWNER_ID) {
             if (!freeUsers[msg.from.id]) {
                 freeUsers[msg.from.id] = []
             }
             if (freeUsers[msg.from.id].length >= 1) {
-                return bot.sendMessage(msg.chat.id, `⚠️ Free Limit Reached`)
+                return bot.sendMessage(msg.chat.id, `⚠️ *Free Limit Reached!*\n\nUpgrade slots limit here -> /plan`, { parse_mode: "Markdown" })
             }
             freeUsers[msg.from.id].push(username)
         }
 
         let exists = monitor.find(x => x.username === username)
         if (exists) {
-            return bot.sendMessage(msg.chat.id, `⚠️ Already Monitoring`)
+            return bot.sendMessage(msg.chat.id, `⚠️ This username is already in the target system loop.`)
         }
 
         monitor.push({ user: msg.from.id, username: username })
         saveAll()
 
-        bot.sendMessage(msg.chat.id, `✅ Monitoring Started\n\n@${username}`)
+        bot.sendMessage(msg.chat.id, `🎯 *Monitoring Hooked!*\n\nBot target list updated: *@${username}*\nChecking non-stop now.`, { parse_mode: "Markdown" })
     } catch (e) {
         console.error("Add Command Error:", e)
     }
+})
+
+/* USER TRACKS STATUS COMMAND */
+bot.onText(/\/my/, async (msg) => {
+    const myTargets = monitor.filter(x => x.user === msg.from.id).map(x => `@${x.username}`)
+    if (myTargets.length === 0) {
+        return bot.sendMessage(msg.chat.id, "❌ Aapki active list empty hai. Targets badhane ke liye use karein: `/add username`", { parse_mode: "Markdown" })
+    }
+    bot.sendMessage(msg.chat.id, `📝 *Your Running Track Slots:*\n\n${myTargets.join("\n")}`, { parse_mode: "Markdown" })
 })
 
 /* PLAN COMMAND */
 bot.onText(/\/plan/, async (msg) => {
     bot.sendMessage(
         msg.chat.id,
-        `💎 Premium Plans\n\n3D → ₹99\n7D → ₹199\n15D → ₹349\n30D → ₹599\n3M → ₹999\nLife → ₹3000`,
+        `💎 *Premium Plans Slots*\n\n3D → ₹99\n7D → ₹199\n15D → ₹349\n30D → ₹599\n3M → ₹999\nLife → ₹3000`,
         {
             reply_markup: {
-                inline_keyboard: [[{ text: "Buy Premium", callback_data: "payment" }]]
-            }
+                inline_keyboard: [[{ text: "Buy Access", callback_data: "payment" }]]
+            },
+            parse_mode: "Markdown"
         }
     )
 })
 
 /* HELP COMMAND */
 bot.onText(/\/help/, async (msg) => {
-    bot.sendMessage(msg.chat.id, `📚 Commands\n\n/login\n/add username\n/plan\n/help`)
+    bot.sendMessage(msg.chat.id, `📚 *Available Command Protocols:*\n\n🔹 \`/add username\` - Drop target file inside loop\n🔹 \`/my\` - Watch ongoing engine tracks\n🔹 \`/plan\` - Shop license plans\n🔹 \`/help\` - Show protocols`, { parse_mode: "Markdown" })
 })
 
-/* SCREENSHOT PAYMENT */
+/* SCREENSHOT VALIDATION RECEIVER */
 bot.on("photo", async (msg) => {
     try {
         await bot.sendPhoto(
             OWNER_ID,
             msg.photo[msg.photo.length - 1].file_id,
             {
-                caption: `💳 Payment\n\n👤 ${msg.from.id}`,
+                caption: `💳 *New Premium Activation Request*\n\n👤 Sender Identity: \`${msg.from.id}\``,
+                parse_mode: "Markdown",
                 reply_markup: {
                     inline_keyboard: [
                         [
-                            { text: "Approve", callback_data: `approve_${msg.from.id}` },
-                            { text: "Deny", callback_data: `deny_${msg.from.id}` }
+                            { text: "Approve ✅", callback_data: `approve_${msg.from.id}` },
+                            { text: "Deny ❌", callback_data: `deny_${msg.from.id}` }
                         ]
                     ]
                 }
             }
         )
-        bot.sendMessage(msg.chat.id, `📸 Screenshot Sent`)
+        bot.sendMessage(msg.chat.id, `📸 *Receipt successfully delivered!* Awaiting owner execution.`, { parse_mode: "Markdown" })
     } catch (e) {
         console.error("Photo Upload Error:", e)
     }
 })
 
-/* AUTO CLAIM SNIPER LOOP */
+/* FIXED PRO SNIPER CORE ENGINE (Claims automatically using Owner Session) */
 setInterval(async () => {
     if (monitor.length === 0) return
+
+    if (!process.env.OWNER_SESSION) {
+        console.log("CRITICAL ERROR: OWNER_SESSION key variable is empty inside cloud configuration!")
+        return
+    }
 
     for (let i = monitor.length - 1; i >= 0; i--) {
         const data = monitor[i]
@@ -390,10 +321,8 @@ setInterval(async () => {
                     err.response.body.description &&
                     err.response.body.description.includes("chat not found")
                 ) {
-                    if (!sessions[data.user]) continue
-
                     const client = new TelegramClient(
-                        new StringSession(sessions[data.user]),
+                        new StringSession(process.env.OWNER_SESSION),
                         Number(process.env.API_ID),
                         process.env.API_HASH,
                         { connectionRetries: 3 }
@@ -401,6 +330,7 @@ setInterval(async () => {
 
                     await client.connect()
                     
+                    // Direct internal API dispatch
                     await client.invoke(
                         new Api.account.UpdateUsername({ username: data.username })
                     )
@@ -409,31 +339,41 @@ setInterval(async () => {
                         owned.push(data.username)
                     }
 
-                    // Remove successfully claimed item from loop queue immediately
+                    // Delete item instantly from stack queue to eliminate infinity-loops
                     monitor.splice(i, 1)
                     saveAll()
 
-                    await bot.sendMessage(data.user, `🎉 Claimed @${data.username}`)
+                    // Dynamic Banner Dispatching
+                    const photoBuffer = generateClaimPhoto(data.username)
+
+                    await bot.sendPhoto(
+                        data.user, 
+                        photoBuffer, 
+                        { 
+                            caption: `🎯 *Target Sniped Successfully!*\n\n🔗 *Username Secured:* @${data.username}\n\nYeh username safe account vault me save ho chuka hai. Transfer ke liye owner se contact karein.`,
+                            parse_mode: "Markdown"
+                        }
+                    )
+                    
                     await client.disconnect()
                 }
             } catch (e) {
-                console.error("Claiming Error for " + data.username + ":", e.message)
+                console.error("Sniper Request Collision for " + data.username + ":", e.message)
             }
         }
-        await new Promise(resolve => setTimeout(resolve, 500))
+        await new Promise(resolve => setTimeout(resolve, 1000)) // Safe structural network delays
     }
-}, 15000)
+}, 12000)
 
-/* CRASH PROTECTION MANAGEMENT */
+/* FAILSAFE CRASH CONTROLLERS */
 process.on("unhandledRejection", (reason) => {
-    console.error("Unhandled Rejection Saved:", reason)
+    console.error("Saved Crash Prevented (Rejection):", reason)
 })
 process.on("uncaughtException", (err) => {
-    console.error("Uncaught Exception Saved:", err)
+    console.error("Saved Crash Prevented (Exception):", err)
 })
 bot.on("polling_error", (err) => {
-    console.error("Polling Error Saved:", err.message)
+    console.error("Polling System Error Ignored:", err.message)
 })
 
-console.log("🚀 PRODUCTION BOT READY WITH DIRECT PHONE/OTP LOGIN SYSTEM")
-    
+console.log("🚀 PRODUCTION ENGINE ACTIVE - SECURE AUTO MODE IS ONLINE")
