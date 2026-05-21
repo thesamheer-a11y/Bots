@@ -45,6 +45,15 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         await update.message.reply_text(
             text=welcome_text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown", disable_web_page_preview=True
         )
+        await update.message.reply_text(
+            text="Please select your escrow type from below.",
+            reply_markup=InlineKeyboardMarkup([
+                [
+                    InlineKeyboardButton("P2P", callback_data="type_p2p"),
+                    InlineKeyboardButton("Product Deal", callback_data="type_product")
+                ]
+            ])
+        )
 
 async def escrow(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     text = "Please select your escrow type from below."
@@ -86,7 +95,6 @@ async def create_telegram_group(group_title: str, bot) -> str:
         await user_client.promote_chat_member(
             chat_id=chat_id,
             user_id=bot_username,
-            can_manage_chat=True,
             can_delete_messages=True,
             can_restrict_members=True,
             can_change_info=True,
