@@ -6,15 +6,22 @@ from telegram.ext import Application, CommandHandler, CallbackQueryHandler, Cont
 from pyrogram import Client, enums
 from pyrogram.types import ChatPrivileges
 
+# Logging setup
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
+logger = logging.getLogger(__name__)
 
+# Environment Variables
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
 STRING_SESSION = os.environ.get("STRING_SESSION", "").strip()
 
 API_ID = 33039308
 API_HASH = "2f74d55adead0491113d5871e2c8cb89"
 
-REDIRECT_URL = "https://t.me/PagalEscrowBot"
+# Updated to your channel link
+REDIRECT_URL = "https://t.me/bsr_shoppie"
+
+# Global Pyrogram Client Object Instance
+user_client = None
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     welcome_text = (
@@ -68,31 +75,25 @@ async def escrow(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         await update.message.reply_text(text=text, reply_markup=InlineKeyboardMarkup(keyboard))
 
 async def create_telegram_group(group_title: str, bot) -> str:
-    if not STRING_SESSION:
-        logging.warning("STRING_SESSION missing!")
+    global user_client
+    if not user_client or not user_client.is_connected:
+        logger.error("Pyrogram Userbot Client is not running!")
         return None
 
-    user_client = None
     try:
-        user_client = Client(
-            "escrow_userbot",
-            api_id=API_ID,
-            api_hash=API_HASH,
-            session_string=STRING_SESSION,
-            in_memory=True
-        )
-        await user_client.start()
-
         bot_info = await bot.get_me()
         bot_username = bot_info.username
 
+        # 1. Create the Group
         created_chat = await user_client.create_supergroup(title=group_title)
         chat_id = created_chat.id
+        await asyncio.sleep(1)
 
-        await asyncio.sleep(2)
+        # 2. Add the Assistant Bot
         await user_client.add_chat_members(chat_id, bot_username)
-        await asyncio.sleep(2)
+        await asyncio.sleep(1)
 
+        # 3. Promote Assistant Bot with Admin Permissions
         await user_client.promote_chat_member(
             chat_id=chat_id,
             user_id=bot_username,
@@ -103,26 +104,16 @@ async def create_telegram_group(group_title: str, bot) -> str:
                 can_change_info=True,
                 can_invite_users=True,
                 can_pin_messages=True,
-                is_anonymous=False
+                can_manage_video_chats=False
             )
         )
-
         await asyncio.sleep(1)
 
-        me = await user_client.get_me()
-        await user_client.promote_chat_member(
-            chat_id=chat_id,
-            user_id=me.id,
-            privileges=ChatPrivileges(
-                is_anonymous=True
-            )
-        )
-
-        await asyncio.sleep(1)
-
+        # 4. Generate Group Invitation Link
         invite_link_obj = await user_client.create_chat_invite_link(chat_id)
         invite_link = invite_link_obj.invite_link
 
+        # 5. Send Pinned Greeting Message via Userbot
         welcome_msg_text = (
             "📍 **Hey there traders! Welcome to our escrow service.**\n\n"
             "✅ Please start with /dd command and fill the DealInfo Form"
@@ -137,14 +128,8 @@ async def create_telegram_group(group_title: str, bot) -> str:
         return invite_link
 
     except Exception as e:
-        logging.error(f"Group creation error: {e}")
+        logger.error(f"Group creation routine failed: {e}", exc_info=True)
         return None
-    finally:
-        if user_client:
-            try:
-                await user_client.stop()
-            except:
-                pass
 
 async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
@@ -159,42 +144,27 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     if query.data == "type_p2p":
         group_title = "P2P Escrow By PAGAL Bot"
         live_link = await create_telegram_group(group_title, context.bot)
-
-        if not live_link:
-            await query.edit_message_text(
-                text="❌ <b>Group create nahi hua, please dobara try karo.</b>",
-                parse_mode="HTML"
-            )
-            return
-
-        msg_text = (
-            "<u><b>Escrow Group Created</b></u>\n\n"
-            f"<b>Creator:</b> {creator_name}\n\n"
-            "<b>Join this escrow group and share the link with the buyer and seller.</b>\n\n"
-            f"{live_link}\n\n"
-            "<b>⚠️ Note: This link is for 2 members only—third parties are not allowed to join.</b>"
-        )
-
     elif query.data == "type_product":
         group_title = "OTC Escrow By PAGAL Bot"
         live_link = await create_telegram_group(group_title, context.bot)
-
-        if not live_link:
-            await query.edit_message_text(
-                text="❌ <b>Group create nahi hua, please dobara try karo.</b>",
-                parse_mode="HTML"
-            )
-            return
-
-        msg_text = (
-            "<u><b>Escrow Group Created</b></u>\n\n"
-            f"<b>Creator:</b> {creator_name}\n\n"
-            "<b>Join this escrow group and share the link with the buyer and seller.</b>\n\n"
-            f"{live_link}\n\n"
-            "<b>⚠️ Note: This link is for 2 members only—third parties are not allowed to join.</b>"
-        )
     else:
         return
+
+    if not live_link:
+        await query.edit_message_text(
+            text="❌ <b>Group create nahi hua, please dobara try karo.</b>",
+            parse_mode="HTML"
+        )
+        return
+
+    # EXACT message format with the quote block
+    msg_text = (
+        "<u><b>Escrow Group Created</b></u>\n\n"
+        f"<b>Creator: {creator_name}</b>\n\n"
+        "<b>Join this escrow group and share the link with the buyer and seller.</b>\n\n"
+        f"{live_link}\n\n"
+        "<blockquote>⚠️ Note: This link is for 2 members only—third parties are not allowed to join.</blockquote>"
+    )
 
     await query.edit_message_text(
         text=msg_text,
@@ -202,19 +172,56 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         disable_web_page_preview=False
     )
 
-def main():
-    if not BOT_TOKEN:
-        print("BOT_TOKEN missing!")
+async def main_async():
+    global user_client
+    
+    if not BOT_TOKEN or not STRING_SESSION:
+        logger.error("Missing critical environment variables (BOT_TOKEN or STRING_SESSION)")
         return
 
+    # Initialize and start the Userbot Client permanently
+    logger.info("Initializing Pyrogram Userbot Client...")
+    user_client = Client(
+        "escrow_userbot",
+        api_id=API_ID,
+        api_hash=API_HASH,
+        session_string=STRING_SESSION,
+        in_memory=True
+    )
+    await user_client.start()
+    logger.info("Pyrogram Userbot Client started successfully.")
+
+    # Initialize PTB Application 
     application = Application.builder().token(BOT_TOKEN).build()
 
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("escrow", escrow))
     application.add_handler(CallbackQueryHandler(button_click))
 
-    print("Bot is running...")
-    application.run_polling()
+    # Run the application alongside user_client loop safely
+    async with application:
+        await application.initialize()
+        await application.start()
+        logger.info("Telegram Bot API Framework active and polling...")
+        await application.updater.start_polling()
+        
+        try:
+            while True:
+                await asyncio.sleep(3600)
+        except (KeyboardInterrupt, asyncio.CancelledError):
+            logger.info("Shutdown signal caught...")
+        finally:
+            logger.info("Stopping components...")
+            await application.updater.stop()
+            await application.stop()
+            await user_client.stop()
+
+def main():
+    try:
+        asyncio.run(main_async())
+    except KeyboardInterrupt:
+        pass
 
 if __name__ == "__main__":
     main()
+    
