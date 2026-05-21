@@ -4,24 +4,27 @@ import logging
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
 
-# Telethon Core Imports
+# Telethon Core Imports (In-Memory Session for Railway Stability)
 from telethon import TelegramClient
 from telethon.sessions import StringSession
 from telethon.tl.functions.channels import CreateChannelRequest, InviteToChannelRequest, EditAdminRequest
 from telethon.tl.functions.messages import ExportChatInviteRequest, PinChannelMessageRequest
 from telethon.tl.types import ChatAdminRights
 
-# Logging for Railway stability
+# Logging settings to prevent Railway deployment failures
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
+# --- ENVIRONMENT VARIABLES ---
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
-API_ID = os.environ.get("API_ID")       
-API_HASH = os.environ.get("API_HASH", "").strip()   
 STRING_SESSION = os.environ.get("STRING_SESSION", "").strip() 
+
+# AAPKE SCREENSHOT WALI FIXED API CREDENTIALS (NO VARIABLES REQ FOR THESE TWO)
+API_ID = 33039308
+API_HASH = "2f74d55adead0491113d5871e2c8cb89"
 
 REDIRECT_URL = "https://t.me/PagalEscrowBot"
 
-# --- 1. START COMMAND (100% EXACT SAME) ---
+# --- 1. START COMMAND (100% SAME TO SAME) ---
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     welcome_text = (
         "💫 @PagalEscrowBot 💫\n"
@@ -60,7 +63,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             text=welcome_text, reply_markup=reply_markup, parse_mode="Markdown", disable_web_page_preview=True
         )
 
-# --- 2. ESCROW COMMAND (100% EXACT SAME) ---
+# --- 2. ESCROW COMMAND (100% SAME TO SAME) ---
 async def escrow(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     text = "Please select your escrow type from below."
     keyboard = [
@@ -73,28 +76,30 @@ async def escrow(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if update.message:
         await update.message.reply_text(text=text, reply_markup=reply_markup)
 
-# --- LIVE DYNAMIC GROUP CREATION (CRASH PROOF) ---
-async def create_telegram_group(group_title: str) -> str:
-    if not API_ID or not API_HASH or not STRING_SESSION:
-        logging.error("Variables are missing in Railway dashboard!")
-        return "https://t.me/+Xcz5bgWzK70wMjc1"
+# --- AUTOMATIC GROUP CREATION LOGIC WITH HARD-CODED API CREDENTIALS ---
+async def create_telegram_group(group_title: str, fallback_link: str) -> str:
+    # CRASH PROTECTION: Agar Railway me String Session na mile toh crash hone ke bajay safe link return karega
+    if not STRING_SESSION:
+        logging.warning("STRING_SESSION variable missing hai dashboard mein! Fallback link diya gaya.")
+        await asyncio.sleep(2)
+        return fallback_link
 
-    # CRASH FIX: StringSession use kiya hai bina local file write kiye (Railway Safe)
-    client = TelegramClient(StringSession(STRING_SESSION), int(API_ID), API_HASH)
+    # Stable StringSession initialization
+    client = TelegramClient(StringSession(STRING_SESSION), API_ID, API_HASH)
     
     try:
         await client.connect()
         
-        # 1. Real new group create karna
+        # 1. Real dynamic group supergroup create karna
         result = await client(CreateChannelRequest(title=group_title, about="Automated Escrow Room", megagroup=True))
         created_chat = result.chats[0]
         
-        # 2. Main Bot username nikal kar add karna
+        # 2. Main Bot username fetches and adds to group
         bot_me = await Application.builder().token(BOT_TOKEN).build().bot.get_me()
         bot_username = bot_me.username
         await client(InviteToChannelRequest(channel=created_chat, users=[bot_username]))
         
-        # 3. Main Bot ko full admin rights dena
+        # 3. Main Bot ko full operational admin privileges dena
         admin_rights = ChatAdminRights(
             change_info=True, post_messages=True, edit_messages=True, 
             delete_messages=True, ban_users=True, invite_users=True, 
@@ -102,11 +107,11 @@ async def create_telegram_group(group_title: str) -> str:
         )
         await client(EditAdminRequest(channel=created_chat, user_id=bot_username, admin_rights=admin_rights, rank="Escrow Bot"))
         
-        # 4. New Invite Link generate karna
+        # 4. Group Invite Link export karna
         invite_result = await client(ExportChatInviteRequest(peer=created_chat))
         invite_link = invite_result.link
         
-        # 5. Exact Screenshot wala text group me send aur PIN karna
+        # 5. Screenshot wale pinned message ka text bhej kar PIN karna
         welcome_msg_text = (
             "📍 <b>Hey there traders! Welcome to our escrow service.</b>\n"
             "✅ Please start with /dd command and fill the DealInfo Form"
@@ -117,18 +122,17 @@ async def create_telegram_group(group_title: str) -> str:
         return invite_link
         
     except Exception as e:
-        logging.error(f"Group automatic banane mein dikkat aayi: {e}")
-        # Kuch galat hone par backup temporary unique link taaki screen par error na aaye
-        return f"https://t.me/+Xcz5bgWzK70wMjc1?fail={id(e)}"
+        logging.error(f"Group dynamic creation failed, safely running fallback: {e}")
+        return fallback_link
     finally:
         await client.disconnect()
 
-# --- 3. BUTTON CLICK HANDLER (100% EXACT SAME TEXT + EDIT) ---
+# --- 3. BUTTON CLICK HANDLER (100% SAME TO SAME WITH EDIT METHOD) ---
 async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
     await query.answer()
     
-    # Text edit hokar sabse pehle bold loading screen aayegi
+    # 1. Click hote hi select message instantly bold loading text mein badal jayega
     waiting_text = "<b>Creating a safe trading place for you, please wait...</b>"
     await query.edit_message_text(text=waiting_text, parse_mode="HTML")
     
@@ -137,7 +141,8 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     
     if query.data == "type_p2p":
         group_title = "P2P Escrow By PAGAL Bot"
-        p2p_link = await create_telegram_group(group_title)
+        default_p2p = "https://t.me/+Xcz5bgWzK70wMjc1"
+        p2p_link = await create_telegram_group(group_title, default_p2p)
         
         msg_text = (
             "<u><b>Escrow Group Created</b></u>\n\n"
@@ -153,7 +158,8 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         
     elif query.data == "type_product":
         group_title = "OTC Escrow By PAGAL Bot"
-        product_link = await create_telegram_group(group_title)
+        default_product = "https://t.me/+Q-8DJ8K6BWszODZk"
+        product_link = await create_telegram_group(group_title, default_product)
         
         msg_text = (
             "<u><b>Escrow Group Created</b></u>\n\n"
@@ -169,7 +175,7 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     else:
         return
 
-    # Usi message ko update karke embed dynamic layout me badal dega
+    # 2. Usi loading text wale message ko final card dashboard mein edit kar dega (Photo 2 look)
     await query.edit_message_text(
         text=msg_text, 
         reply_markup=InlineKeyboardMarkup(keyboard), 
@@ -179,7 +185,7 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 
 def main():
     if not BOT_TOKEN:
-        print("BOT_TOKEN missing!")
+        print("CRITICAL: BOT_TOKEN is missing in environment variables!")
         return
         
     application = Application.builder().token(BOT_TOKEN).build()
@@ -188,7 +194,7 @@ def main():
     application.add_handler(CommandHandler("escrow", escrow))
     application.add_handler(CallbackQueryHandler(button_click))
     
-    print("Bot is up and active...")
+    print("Bot is fully running on cloud environment...")
     application.run_polling()
 
 if __name__ == "__main__":
