@@ -1,6 +1,6 @@
 import os
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
-from telegram.ext import Application, CommandHandler, ContextTypes
+from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
 
 # Railway ke environment variable se token uthayega
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
@@ -46,83 +46,81 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         text=welcome_text, reply_markup=reply_markup, parse_mode="Markdown", disable_web_page_preview=True
     )
 
-# --- 2. ESCROW COMMAND ---
+# --- 2. ESCROW COMMAND (Dono Photo 1 ke jaisa select options dikhayega) ---
 async def escrow(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    escrow_text = (
-        "🤝 **NEW ESCROW TRANSACTION** 🤝\n\n"
-        "Nayi deal shuru karne ke liye niche diye gaye format ko fill karein:\n\n"
-        "🔹 **Buyer:** @username\n"
-        "🔹 **Seller:** @username\n"
-        "🔹 **Amount/Coin:** 100 USDT\n"
-        "🔹 **Deal Rules:** [Yahan details likhein]\n\n"
-        "Dono parties jab agree kareingi, tabhi funds escrow wallet me safe rakhe jayenge."
-    )
-    # Iske niche bhi redirect button de diya taaki click karte hi bot khule
-    keyboard = [[InlineKeyboardButton("Start Deal Process 🚀", url=REDIRECT_URL)]]
-    await update.message.reply_text(text=escrow_text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
+    text = "Please select your escrow type from below."
+    
+    # Ye buttons callback_data bhejenge backend me bina redirect kiye, taaki process aage badhe
+    keyboard = [
+        [
+            InlineKeyboardButton("P2P", callback_data="type_p2p"),
+            InlineKeyboardButton("Product Deal", callback_data="type_product")
+        ]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await update.message.reply_text(text=text, reply_markup=reply_markup)
 
-# --- 3. DISPUTE COMMAND ---
-async def dispute(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    dispute_text = (
-        "⚠️ **DISPUTE RAISED** ⚠️\n\n"
-        "Aapki deal me koi issue aaya hai? Pareshan mat hoiye.\n"
-        "Humare **Official Arbitrators** ko notify kar diya gaya hai. Agle 24 gante ke andar ek admin is group chat me aakar aapka mamla solve karega.\n\n"
-        "Tab tak kripya deal ke proofs (screenshots/chats) taiyar rakhein."
-    )
-    keyboard = [[InlineKeyboardButton("Contact Support Head 🧑‍⚖️", url=REDIRECT_URL)]]
-    await update.message.reply_text(text=dispute_text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
+# --- 3. BUTTON CLICK HANDLER (Photo 2 ke jaisa link aur creator name banyega) ---
+async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    query = update.callback_query
+    await query.answer() # Button click accept karne ke liye
+    
+    # User ka naam nikalne ke liye (First name agar username na ho toh)
+    user = query.from_user
+    creator_name = f"@{user.username}" if user.username else user.first_name
+    
+    # Dummy Group Links (Asli bot me aap yahan apna dynamic link generator code laga sakte hain)
+    p2p_link = "https://t.me/+Xcz5bgWzK70wMjc1"
+    product_link = "https://t.me/+Q-8DJ8K6BWszODZk"
+    
+    if query.data == "type_p2p":
+        msg_text = (
+            "<u><b>Escrow Group Created</b></u>\n\n"
+            f"<b>Creator:</b> {creator_name}\n\n"
+            "Join this escrow group and share the link with the buyer and seller.\n\n"
+            f"{p2p_link}\n\n"
+            "🔸 <b>Telegram</b>\n"
+            "<b>P2P Escrow By PAGAL Bot</b>\n"
+            "You’ve been invited to join this group on Telegram.\n\n"
+            "⚠️ Note: This link is for 2 members only—third parties are not allowed to join."
+        )
+        # Niche ek 'VIEW GROUP' button jo group link par le jayega
+        keyboard = [[InlineKeyboardButton("VIEW GROUP 👥", url=p2p_link)]]
+        
+    elif query.data == "type_product":
+        msg_text = (
+            "<u><b>Escrow Group Created</b></u>\n\n"
+            f"<b>Creator:</b> {creator_name}\n\n"
+            "Join this escrow group and share the link with the buyer and seller.\n\n"
+            f"{product_link}\n\n"
+            "🔸 <b>Telegram</b>\n"
+            "<b>OTC Escrow By PAGAL Bot</b>\n"
+            "You’ve been invited to join this group on Telegram.\n\n"
+            "⚠️ Note: This link is for 2 members only—third parties are not allowed to join."
+        )
+        keyboard = [[InlineKeyboardButton("VIEW GROUP 👥", url=product_link)]]
 
-# --- 4. RELEASE COMMAND ---
-async def release(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    release_text = (
-        "✅ **FUNDS RELEASE REQUEST** ✅\n\n"
-        "Agar aapko aapka product/service sahi salamat mil gayi hai, toh aap funds release kar sakte hain.\n\n"
-        "⚠️ **Note:** Ek baar funds release hone ke baad unhe wapas nahi laya ja sakta."
+    await query.message.reply_text(
+        text=msg_text, 
+        reply_markup=InlineKeyboardMarkup(keyboard), 
+        parse_mode="HTML",
+        disable_web_page_preview=False # Isko False rakha hai taaki link ka preview box (Photo 2 jaisa) dikhe
     )
-    keyboard = [[InlineKeyboardButton("Confirm & Release Crypto 🔓", url=REDIRECT_URL)]]
-    await update.message.reply_text(text=release_text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
-
-# --- 5. CANCEL COMMAND ---
-async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    cancel_text = (
-        "❌ **CANCEL TRANSACTION** ❌\n\n"
-        "Kya aap is deal ko cancel karna chahte hain? Deal cancel karne ke liye dono (Buyer aur Seller) ki manzoori zaroori hai."
-    )
-    keyboard = [[InlineKeyboardButton("Request Cancel 🚫", url=REDIRECT_URL)]]
-    await update.message.reply_text(text=cancel_text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
-
-# --- 6. MENU COMMAND ---
-async def menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    menu_text = (
-        "🛠️ **PAGAL ESCROW BOT MENU** 🛠️\n\n"
-        "Aap niche di gayi commands ka use kar sakte hain:\n"
-        "➡️ `/start` - Main Menu dekhne ke liye\n"
-        "➡️ `/escrow` - Nayi deal shuru karne ke liye\n"
-        "➡️ `/release` - Buyer dwara paise seller ko bhejne ke liye\n"
-        "➡️ `/dispute` - Jhagda hone par admin bulane ke liye\n"
-        "➡️ `/cancel` - Deal radd (cancel) karne ke liye"
-    )
-    keyboard = [[InlineKeyboardButton("Open Full Dashboard 📊", url=REDIRECT_URL)]]
-    await update.message.reply_text(text=menu_text, reply_markup=InlineKeyboardMarkup(keyboard), parse_mode="Markdown")
-
 
 def main():
     if not BOT_TOKEN:
-        print("Error: BOT_TOKEN environment variable nahi mila!")
+        print("Error: BOT_TOKEN nahi mila!")
         return
         
     application = Application.builder().token(BOT_TOKEN).build()
     
-    # Saari commands ke handlers yahan register kar diye hain
+    # Handlers
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("escrow", escrow))
-    application.add_handler(CommandHandler("dispute", dispute))
-    application.add_handler(CommandHandler("release", release))
-    application.add_handler(CommandHandler("cancel", cancel))
-    application.add_handler(CommandHandler("menu", menu))
+    application.add_handler(CallbackQueryHandler(button_click)) # Buttons click handle karne ke liye
     
     application.run_polling()
 
 if __name__ == "__main__":
     main()
-  
+    
