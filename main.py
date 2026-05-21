@@ -3,7 +3,7 @@ import asyncio
 import logging
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
-from pyrogram import Client
+from pyrogram import Client, enums
 from pyrogram.types import ChatPrivileges
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
@@ -90,7 +90,6 @@ async def create_telegram_group(group_title: str, bot) -> str:
         chat_id = created_chat.id
 
         await asyncio.sleep(2)
-
         await user_client.add_chat_members(chat_id, bot_username)
         await asyncio.sleep(2)
 
@@ -110,7 +109,6 @@ async def create_telegram_group(group_title: str, bot) -> str:
 
         await asyncio.sleep(1)
 
-        # Owner ko anonymous karo
         me = await user_client.get_me()
         await user_client.promote_chat_member(
             chat_id=chat_id,
@@ -126,10 +124,14 @@ async def create_telegram_group(group_title: str, bot) -> str:
         invite_link = invite_link_obj.invite_link
 
         welcome_msg_text = (
-            "📍 <b>Hey there traders! Welcome to our escrow service.</b>\n\n"
+            "📍 **Hey there traders! Welcome to our escrow service.**\n\n"
             "✅ Please start with /dd command and fill the DealInfo Form"
         )
-        sent_msg = await user_client.send_message(chat_id, welcome_msg_text, parse_mode="html")
+        sent_msg = await user_client.send_message(
+            chat_id,
+            welcome_msg_text,
+            parse_mode=enums.ParseMode.MARKDOWN
+        )
         await user_client.pin_chat_message(chat_id, sent_msg.id)
 
         return invite_link
@@ -168,14 +170,10 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         msg_text = (
             "<u><b>Escrow Group Created</b></u>\n\n"
             f"<b>Creator:</b> {creator_name}\n\n"
-            "Join this escrow group and share the link with the buyer and seller.\n\n"
+            "<b>Join this escrow group and share the link with the buyer and seller.</b>\n\n"
             f"{live_link}\n\n"
-            "⚠️ Note: This link is for 2 members only—third parties are not allowed to join.\n\n"
-            "🔸 <b>Telegram</b>\n"
-            "<b>P2P Escrow By PAGAL Bot</b>\n"
-            "You've been invited to join this group on Telegram."
+            "<b>⚠️ Note: This link is for 2 members only—third parties are not allowed to join.</b>"
         )
-        keyboard = [[InlineKeyboardButton("VIEW GROUP 👥", url=live_link)]]
 
     elif query.data == "type_product":
         group_title = "OTC Escrow By PAGAL Bot"
@@ -191,20 +189,15 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         msg_text = (
             "<u><b>Escrow Group Created</b></u>\n\n"
             f"<b>Creator:</b> {creator_name}\n\n"
-            "Join this escrow group and share the link with the buyer and seller.\n\n"
+            "<b>Join this escrow group and share the link with the buyer and seller.</b>\n\n"
             f"{live_link}\n\n"
-            "⚠️ Note: This link is for 2 members only—third parties are not allowed to join.\n\n"
-            "🔸 <b>Telegram</b>\n"
-            "<b>OTC Escrow By PAGAL Bot</b>\n"
-            "You've been invited to join this group on Telegram."
+            "<b>⚠️ Note: This link is for 2 members only—third parties are not allowed to join.</b>"
         )
-        keyboard = [[InlineKeyboardButton("VIEW GROUP 👥", url=live_link)]]
     else:
         return
 
     await query.edit_message_text(
         text=msg_text,
-        reply_markup=InlineKeyboardMarkup(keyboard),
         parse_mode="HTML",
         disable_web_page_preview=False
     )
