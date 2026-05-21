@@ -38,8 +38,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         [InlineKeyboardButton("Updates 🔄", url=REDIRECT_URL), InlineKeyboardButton("Vouches ✔️", url=REDIRECT_URL)],
         [InlineKeyboardButton("WHAT IS ESCROW ❓", url=REDIRECT_URL), InlineKeyboardButton("Instructions 🧑‍💻", url=REDIRECT_URL)],
         [InlineKeyboardButton("Terms 📝", url=REDIRECT_URL)],
-        [InlineKeyboardButton("Invites 👤", url=REDIRECT_URL)],
-        [InlineKeyboardButton("🚀 Start Escrow", callback_data="start_escrow")]
+        [InlineKeyboardButton("Invites 👤", url=REDIRECT_URL)]
     ]
 
     if update.message:
@@ -123,17 +122,6 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     query = update.callback_query
     await query.answer()
 
-    if query.data == "start_escrow":
-        text = "Please select your escrow type from below."
-        keyboard = [
-            [
-                InlineKeyboardButton("P2P", callback_data="type_p2p"),
-                InlineKeyboardButton("Product Deal", callback_data="type_product")
-            ]
-        ]
-        await query.edit_message_reply_markup(reply_markup=InlineKeyboardMarkup(keyboard))
-        return
-
     waiting_text = "<b>Creating a safe trading place for you, please wait...</b>"
     await query.edit_message_text(text=waiting_text, parse_mode="HTML")
 
@@ -161,6 +149,7 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
             "<b>P2P Escrow By PAGAL Bot</b>\n"
             "You've been invited to join this group on Telegram."
         )
+        keyboard = [[InlineKeyboardButton("VIEW GROUP 👥", url=live_link)]]
 
     elif query.data == "type_product":
         group_title = "OTC Escrow By PAGAL Bot"
@@ -183,11 +172,13 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
             "<b>OTC Escrow By PAGAL Bot</b>\n"
             "You've been invited to join this group on Telegram."
         )
+        keyboard = [[InlineKeyboardButton("VIEW GROUP 👥", url=live_link)]]
     else:
         return
 
     await query.edit_message_text(
         text=msg_text,
+        reply_markup=InlineKeyboardMarkup(keyboard),
         parse_mode="HTML",
         disable_web_page_preview=False
     )
