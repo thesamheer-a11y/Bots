@@ -84,16 +84,16 @@ async def create_telegram_group(group_title: str, bot) -> str:
         bot_info = await bot.get_me()
         bot_username = bot_info.username
 
-        # 1. Create the Group
+        # 1. Create the Group via Userbot
         created_chat = await user_client.create_supergroup(title=group_title)
         chat_id = created_chat.id
         await asyncio.sleep(1)
 
-        # 2. Add the Assistant Bot
+        # 2. Add the Assistant Bot to the Group
         await user_client.add_chat_members(chat_id, bot_username)
         await asyncio.sleep(1)
 
-        # 3. Promote Assistant Bot with Admin Permissions
+        # 3. Promote Assistant Bot with Admin Permissions & Escrow Bot Custom Tag
         await user_client.promote_chat_member(
             chat_id=chat_id,
             user_id=bot_username,
@@ -107,39 +107,30 @@ async def create_telegram_group(group_title: str, bot) -> str:
                 can_manage_video_chats=False
             )
         )
+        # Custom Title set to Escrow Bot only
+        await user_client.set_administrator_title(chat_id, bot_username, "Escrow Bot")
         await asyncio.sleep(1)
 
-        # 4. Make Userbot Anonymous Creator
-        await user_client.promote_chat_member(
-            chat_id=chat_id,
-            user_id="me",
-            privileges=ChatPrivileges(
-                can_manage_chat=True,
-                can_delete_messages=True,
-                can_restrict_members=True,
-                can_change_info=True,
-                can_invite_users=True,
-                can_pin_messages=True,
-                is_anonymous=True
-            )
-        )
-        await asyncio.sleep(1)
-
-        # 5. Generate Group Invitation Link
+        # 4. Generate Group Invitation Link
         invite_link_obj = await user_client.create_chat_invite_link(chat_id)
         invite_link = invite_link_obj.invite_link
 
-        # 6. Send Anonymous Message via Group Identity
+        # 5. Send message via Main Bot (carried by 'Escrow Bot' badge name)
         welcome_msg_text = (
             "📍 **Hey there traders! Welcome to our escrow service.**\n\n"
             "✅ Please start with /dd command and fill the DealInfo Form"
         )
-        sent_msg = await user_client.send_message(
-            chat_id,
-            welcome_msg_text,
-            parse_mode=enums.ParseMode.MARKDOWN
+        
+        sent_msg = await bot.send_message(
+            chat_id=chat_id,
+            text=welcome_msg_text,
+            parse_mode="Markdown"
         )
-        await user_client.pin_chat_message(chat_id, sent_msg.id)
+        await bot.pin_chat_message(chat_id=chat_id, message_id=sent_msg.message_id)
+        await asyncio.sleep(1)
+
+        # 6. Userbot leaves the group completely so its identity is completely removed
+        await user_client.leave_chat(chat_id)
 
         return invite_link
 
@@ -188,7 +179,6 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         disable_web_page_preview=False
     )
 
-# Function to safely delete Join/Leave service messages via Main Bot
 async def auto_delete_service_messages(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if update.message:
         try:
@@ -203,7 +193,6 @@ async def main_async():
         logger.error("Missing critical environment variables (BOT_TOKEN or STRING_SESSION)")
         return
 
-    # Initialize and start the Userbot Client permanently without risky dynamic handlers
     logger.info("Initializing Pyrogram Userbot Client...")
     user_client = Client(
         "escrow_userbot",
@@ -219,12 +208,10 @@ async def main_async():
     # Initialize PTB Application 
     application = Application.builder().token(BOT_TOKEN).build()
 
-    # Command and Callback handlers
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("escrow", escrow))
     application.add_handler(CallbackQueryHandler(button_click))
     
-    # PTB Filter to auto-delete Join, Leave, and Chat created service messages safely
     application.add_handler(MessageHandler(
         filters.StatusUpdate.NEW_CHAT_MEMBERS | 
         filters.StatusUpdate.LEFT_CHAT_MEMBER | 
@@ -232,7 +219,6 @@ async def main_async():
         auto_delete_service_messages
     ))
 
-    # Run the application alongside user_client loop safely
     async with application:
         await application.initialize()
         await application.start()
