@@ -93,7 +93,7 @@ async def create_telegram_group(group_title: str, bot) -> str:
         await user_client.add_chat_members(chat_id, bot_username)
         await asyncio.sleep(1)
 
-        # 3. Promote Assistant Bot with Admin Permissions & Escrow Bot Custom Tag
+        # 3. Promote Assistant Bot with Admin Permissions
         await user_client.promote_chat_member(
             chat_id=chat_id,
             user_id=bot_username,
@@ -107,29 +107,45 @@ async def create_telegram_group(group_title: str, bot) -> str:
                 can_manage_video_chats=False
             )
         )
-        # Custom Title set to Escrow Bot only
-        await user_client.set_administrator_title(chat_id, bot_username, "Escrow Bot")
         await asyncio.sleep(1)
 
-        # 4. Generate Group Invitation Link
+        # 4. Userbot sets itself to anonymous admin
+        await user_client.promote_chat_member(
+            chat_id=chat_id,
+            user_id="me",
+            privileges=ChatPrivileges(
+                can_manage_chat=True,
+                can_delete_messages=True,
+                can_restrict_members=True,
+                can_change_info=True,
+                can_invite_users=True,
+                can_pin_messages=True,
+                is_anonymous=True
+            )
+        )
+        # Custom Title set to Escrow Bot only
+        await user_client.set_administrator_title(chat_id, "me", "Escrow Bot")
+        await asyncio.sleep(1)
+
+        # 5. Generate Group Invitation Link
         invite_link_obj = await user_client.create_chat_invite_link(chat_id)
         invite_link = invite_link_obj.invite_link
 
-        # 5. Send message via Main Bot (carried by 'Escrow Bot' badge name)
+        # 6. Send message from Owner ID but anonymously (Group Identity)
         welcome_msg_text = (
             "📍 **Hey there traders! Welcome to our escrow service.**\n\n"
             "✅ Please start with /dd command and fill the DealInfo Form"
         )
         
-        sent_msg = await bot.send_message(
+        sent_msg = await user_client.send_message(
             chat_id=chat_id,
             text=welcome_msg_text,
-            parse_mode="Markdown"
+            parse_mode=enums.ParseMode.MARKDOWN
         )
-        await bot.pin_chat_message(chat_id=chat_id, message_id=sent_msg.message_id)
+        await user_client.pin_chat_message(chat_id=chat_id, message_id=sent_msg.id)
         await asyncio.sleep(1)
 
-        # 6. Userbot leaves the group completely so its identity is completely removed
+        # 7. Userbot leaves the group so 'Owner' label disappears, leaving only 'Escrow Bot' tag identity
         await user_client.leave_chat(chat_id)
 
         return invite_link
