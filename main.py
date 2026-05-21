@@ -109,7 +109,7 @@ async def create_telegram_group(group_title: str, bot) -> str:
         )
         await asyncio.sleep(1)
 
-        # 4. Userbot sets itself to anonymous admin
+        # 4. Userbot sets standard admin rights first (Zaroori hai title change ke liye)
         await user_client.promote_chat_member(
             chat_id=chat_id,
             user_id="me",
@@ -120,18 +120,36 @@ async def create_telegram_group(group_title: str, bot) -> str:
                 can_change_info=True,
                 can_invite_users=True,
                 can_pin_messages=True,
-                is_anonymous=True
+                is_anonymous=False
             )
         )
-        # Custom Title set to Escrow Bot only
+        await asyncio.sleep(1)
+
+        # 5. Set custom admin title badge to "Escrow Bot"
         await user_client.set_administrator_title(chat_id, "me", "Escrow Bot")
         await asyncio.sleep(1)
 
-        # 5. Generate Group Invitation Link
+        # 6. Title lagne ke baad ab isko explicitly ANONYMOUS permission toggle karenge
+        await user_client.promote_chat_member(
+            chat_id=chat_id,
+            user_id="me",
+            privileges=ChatPrivileges(
+                can_manage_chat=True,
+                can_delete_messages=True,
+                can_restrict_members=True,
+                can_change_info=True,
+                can_invite_users=True,
+                can_pin_messages=True,
+                is_anonymous=True  # Ab message guaranteed anonymous group name se jayega
+            )
+        )
+        await asyncio.sleep(1)
+
+        # 7. Generate Group Invitation Link
         invite_link_obj = await user_client.create_chat_invite_link(chat_id)
         invite_link = invite_link_obj.invite_link
 
-        # 6. Send message from Owner ID but anonymously (Group Identity)
+        # 8. Send anonymous message with group identity
         welcome_msg_text = (
             "📍 **Hey there traders! Welcome to our escrow service.**\n\n"
             "✅ Please start with /dd command and fill the DealInfo Form"
@@ -145,7 +163,7 @@ async def create_telegram_group(group_title: str, bot) -> str:
         await user_client.pin_chat_message(chat_id=chat_id, message_id=sent_msg.id)
         await asyncio.sleep(1)
 
-        # 7. Userbot leaves the group so 'Owner' label disappears, leaving only 'Escrow Bot' tag identity
+        # 9. Userbot leaves the group safely
         await user_client.leave_chat(chat_id)
 
         return invite_link
