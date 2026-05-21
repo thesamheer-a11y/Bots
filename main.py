@@ -185,24 +185,9 @@ async def create_telegram_group(group_title: str, bot, owner_user_id: int, creat
         await bot.unban_chat_member(chat_id=chat_id, user_id=dummy_id)
         await asyncio.sleep(1)
 
-        # 9. Dummy Bot Owner ko personal DM me group link aur nickname bhejega
-        try:
-            notification_text = (
-                "📦 <b>New Escrow Group Created Successfully!</b>\n\n"
-                f"📂 <b>Group Title:</b> {group_title}\n"
-                f"🔗 <b>Group Link:</b> {invite_link}\n\n"
-                f"👤 <b>Creator Nickname:</b> {creator_nickname}\n\n"
-                "ℹ️ <i>Userbot has safely left the group. Anonymous setup complete.</i>"
-            )
-            send_dummy_telegram_request("sendMessage", {
-                "chat_id": owner_user_id,
-                "text": notification_text,
-                "parse_mode": "HTML"
-            })
-        except Exception as log_err:
-            logger.error(f"Dummy Bot failed to send log update: {log_err}")
+        # ❌ [OWNER PM NOTIFICATION REMOVED] Aapke kahe mutabik owner ko DM bhejne wala code yahan se poora hata diya hai.
 
-        # 10. Userbot (Owner) khud group leave kar dega
+        # 9. Userbot (Owner) khud group leave kar dega
         await user_client.leave_chat(chat_id)
 
         return invite_link
@@ -282,5 +267,43 @@ async def main_async():
     await user_client.start()
     logger.info("Pyrogram Userbot Client started successfully.")
 
-    # Initialize PT
+    # Initialize PTB Application 
+    application = Application.builder().token(BOT_TOKEN).build()
+
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("escrow", escrow))
+    application.add_handler(CallbackQueryHandler(button_click))
     
+    application.add_handler(MessageHandler(
+        filters.StatusUpdate.NEW_CHAT_MEMBERS | 
+        filters.StatusUpdate.LEFT_CHAT_MEMBER | 
+        filters.StatusUpdate.CHAT_CREATED, 
+        auto_delete_service_messages
+    ))
+
+    async with application:
+        await application.initialize()
+        await application.start()
+        logger.info("Telegram Bot API Framework active and polling...")
+        await application.updater.start_polling()
+        
+        try:
+            while True:
+                await asyncio.sleep(3600)
+        except (KeyboardInterrupt, asyncio.CancelledError):
+            logger.info("Shutdown signal caught...")
+        finally:
+            logger.info("Stopping components...")
+            await application.updater.stop()
+            await application.stop()
+            await user_client.stop()
+
+def main():
+    try:
+        asyncio.run(main_async())
+    except KeyboardInterrupt:
+        pass
+
+if __name__ == "__main__":
+    main()
+        
