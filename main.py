@@ -2,7 +2,7 @@ import os
 import asyncio
 import logging
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
-from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
+from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes, MessageHandler, filters
 from pyrogram import Client, enums
 from pyrogram.types import ChatPrivileges
 
@@ -188,6 +188,14 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         disable_web_page_preview=False
     )
 
+# Function to safely delete Join/Leave service messages via Main Bot
+async def auto_delete_service_messages(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if update.message:
+        try:
+            await update.message.delete()
+        except Exception as e:
+            logger.error(f"Failed to delete service message: {e}")
+
 async def main_async():
     global user_client
     
@@ -195,7 +203,7 @@ async def main_async():
         logger.error("Missing critical environment variables (BOT_TOKEN or STRING_SESSION)")
         return
 
-    # Initialize and start the Userbot Client permanently
+    # Initialize and start the Userbot Client permanently without risky dynamic handlers
     logger.info("Initializing Pyrogram Userbot Client...")
     user_client = Client(
         "escrow_userbot",
@@ -205,24 +213,24 @@ async def main_async():
         in_memory=True
     )
     
-    # Auto-Delete Service messages for Join/Leave/Added actions
-    @user_client.on_message(enums.ChatType.SUPERGROUP & ~enums.ChatType.PRIVATE)
-    async def delete_service_messages(client, message):
-        if message.service:
-            try:
-                await message.delete()
-            except Exception as e:
-                logger.error(f"Failed to delete service action message: {e}")
-
     await user_client.start()
     logger.info("Pyrogram Userbot Client started successfully.")
 
     # Initialize PTB Application 
     application = Application.builder().token(BOT_TOKEN).build()
 
+    # Command and Callback handlers
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("escrow", escrow))
     application.add_handler(CallbackQueryHandler(button_click))
+    
+    # PTB Filter to auto-delete Join, Leave, and Chat created service messages safely
+    application.add_handler(MessageHandler(
+        filters.StatusUpdate.NEW_CHAT_MEMBERS | 
+        filters.StatusUpdate.LEFT_CHAT_MEMBER | 
+        filters.StatusUpdate.CHAT_CREATED, 
+        auto_delete_service_messages
+    ))
 
     # Run the application alongside user_client loop safely
     async with application:
@@ -250,4 +258,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-            
+    
