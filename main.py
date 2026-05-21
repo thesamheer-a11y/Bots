@@ -17,7 +17,7 @@ STRING_SESSION = os.environ.get("STRING_SESSION", "").strip()
 API_ID = 33039308
 API_HASH = "2f74d55adead0491113d5871e2c8cb89"
 
-# Updated to your channel link
+# Channel redirect link
 REDIRECT_URL = "https://t.me/bsr_shoppie"
 
 # Global Pyrogram Client Object Instance
@@ -109,11 +109,27 @@ async def create_telegram_group(group_title: str, bot) -> str:
         )
         await asyncio.sleep(1)
 
-        # 4. Generate Group Invitation Link
+        # 4. Make Userbot Anonymous Creator
+        await user_client.promote_chat_member(
+            chat_id=chat_id,
+            user_id="me",
+            privileges=ChatPrivileges(
+                can_manage_chat=True,
+                can_delete_messages=True,
+                can_restrict_members=True,
+                can_change_info=True,
+                can_invite_users=True,
+                can_pin_messages=True,
+                is_anonymous=True
+            )
+        )
+        await asyncio.sleep(1)
+
+        # 5. Generate Group Invitation Link
         invite_link_obj = await user_client.create_chat_invite_link(chat_id)
         invite_link = invite_link_obj.invite_link
 
-        # 5. Send Pinned Greeting Message via Userbot
+        # 6. Send Anonymous Message via Group Identity
         welcome_msg_text = (
             "📍 **Hey there traders! Welcome to our escrow service.**\n\n"
             "✅ Please start with /dd command and fill the DealInfo Form"
@@ -157,7 +173,7 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
         )
         return
 
-    # EXACT message format with the quote block
+    # EXACT layout format containing quote block
     msg_text = (
         "<u><b>Escrow Group Created</b></u>\n\n"
         f"<b>Creator: {creator_name}</b>\n\n"
@@ -188,6 +204,16 @@ async def main_async():
         session_string=STRING_SESSION,
         in_memory=True
     )
+    
+    # Auto-Delete Service messages for Join/Leave/Added actions
+    @user_client.on_message(enums.ChatType.SUPERGROUP & ~enums.ChatType.PRIVATE)
+    async def delete_service_messages(client, message):
+        if message.service:
+            try:
+                await message.delete()
+            except Exception as e:
+                logger.error(f"Failed to delete service action message: {e}")
+
     await user_client.start()
     logger.info("Pyrogram Userbot Client started successfully.")
 
@@ -224,4 +250,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-    
+            
