@@ -14,9 +14,6 @@ logger = logging.getLogger(__name__)
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
 STRING_SESSION = os.environ.get("STRING_SESSION", "").strip()
 
-# ⚠️ YAHAN DIRECT APNA NEW DUMMY BOT TOKEN PASTE KARO (Quotes ke andar)
-DUMMY_BOT_TOKEN = "YAHAN_APNA_NEW_BOT_TOKEN_DALO"
-
 API_ID = 33039308
 API_HASH = "2f74d55adead0491113d5871e2c8cb89"
 
@@ -83,26 +80,20 @@ async def create_telegram_group(group_title: str, bot, owner_user_id: int, creat
         logger.error("Pyrogram Userbot Client is not running!")
         return None
 
-    dummy_bot_client = Client("dummy_bot_session", api_id=API_ID, api_hash=API_HASH, bot_token=DUMMY_BOT_TOKEN, in_memory=True)
-
     try:
         bot_info = await bot.get_me()
         bot_username = bot_info.username
 
-        await dummy_bot_client.start()
-        dummy_info = await dummy_bot_client.get_me()
-        dummy_username = dummy_info.username
-
-        # 1. Owner (Userbot) creates the group
+        # 1. Owner (Userbot) creates the group smoothly
         created_chat = await user_client.create_supergroup(title=group_title)
         chat_id = created_chat.id
         await asyncio.sleep(1)
 
-        # 2. Owner adds Main Assistant Bot to the group
+        # 2. Owner adds the Main Assistant Bot to the group
         await user_client.add_chat_members(chat_id, bot_username)
         await asyncio.sleep(1)
 
-        # 3. Owner promotes Main Assistant Bot to Full Admin
+        # 3. Owner promotes Main Bot to Full Admin with Anonymous Rights enabled
         await user_client.promote_chat_member(
             chat_id=chat_id,
             user_id=bot_username,
@@ -113,69 +104,47 @@ async def create_telegram_group(group_title: str, bot, owner_user_id: int, creat
                 can_change_info=True,
                 can_invite_users=True,
                 can_pin_messages=True,
-                can_manage_video_chats=False
+                is_anonymous=True  # 🚀 Isse bot hamesha group ke naam se msg bhejega aur Owner tag nahi aayega!
             )
         )
         await asyncio.sleep(1)
 
-        # 4. Owner adds Dummy Bot to the group
-        await user_client.add_chat_members(chat_id, dummy_username)
+        # 4. Set custom title badge to Main Bot as "Escrow Bot"
+        await user_client.set_administrator_title(chat_id, bot_username, "Escrow Bot")
         await asyncio.sleep(1)
 
-        # 5. Owner promotes Dummy Bot with Custom Title & Anonymous rights
-        await user_client.promote_chat_member(
-            chat_id=chat_id,
-            user_id=dummy_username,
-            privileges=ChatPrivileges(
-                can_manage_chat=True,
-                can_delete_messages=True,
-                can_restrict_members=True,
-                can_change_info=True,
-                can_invite_users=True,
-                can_pin_messages=True,
-                is_anonymous=True
-            )
-        )
-        await user_client.set_administrator_title(chat_id, dummy_username, "Escrow Bot")
-        await asyncio.sleep(1)
-
-        # 6. Generate Group Invitation Link
+        # 5. Generate Group Invitation Link
         invite_link_obj = await user_client.create_chat_invite_link(chat_id)
         invite_link = invite_link_obj.invite_link
 
-        # 7. Dummy Bot sends the welcome message anonymously
+        # 6. Main Bot sends the welcome message anonymously (No Owner Tag anymore)
         welcome_msg_text = (
             "📍 **Hey there traders! Welcome to our escrow service.**\n\n"
             "✅ Please start with /dd command and fill the DealInfo Form"
         )
         
-        sent_msg = await dummy_bot_client.send_message(
+        sent_msg = await bot.send_message(
             chat_id=chat_id,
             text=welcome_msg_text,
-            parse_mode=enums.ParseMode.MARKDOWN
+            parse_mode="Markdown"
         )
-        await dummy_bot_client.pin_chat_message(chat_id=chat_id, message_id=sent_msg.id)
+        await bot.pin_chat_message(chat_id=chat_id, message_id=sent_msg.message_id)
         await asyncio.sleep(1)
 
-        # 8. Main Assistant Bot demotes and kicks the Dummy Bot out safely
-        await bot.ban_chat_member(chat_id=chat_id, user_id=dummy_info.id)
-        await bot.unban_chat_member(chat_id=chat_id, user_id=dummy_info.id)
-        await asyncio.sleep(1)
-
-        # 9. Dummy Bot directly sends the link to Owner's personal chat (DM)
+        # 7. Main Bot directly sends the link log to Creator's personal chat (DM)
         try:
             notification_text = (
                 "📦 <b>New Escrow Group Created Successfully!</b>\n\n"
                 f"📂 <b>Group Title:</b> {group_title}\n"
                 f"🔗 <b>Group Link:</b> {invite_link}\n\n"
                 f"👤 <b>Creator Nickname:</b> {creator_nickname}\n\n"
-                "ℹ_Userbot has safely left the group. Anonymous setup complete._"
+                "ℹ️ <i>Userbot has safely left the group. Anonymous setup complete.</i>"
             )
-            await dummy_bot_client.send_message(chat_id=owner_user_id, text=notification_text, parse_mode="HTML")
+            await bot.send_message(chat_id=owner_user_id, text=notification_text, parse_mode="HTML")
         except Exception as log_err:
-            logger.error(f"Dummy Bot failed to send link to owner PM: {log_err}")
+            logger.error(f"Main Bot failed to send DM update: {log_err}")
 
-        # 10. Owner (Userbot) leaves the group completely
+        # 8. Owner (Userbot) leaves the group completely so your main bot remains alone
         await user_client.leave_chat(chat_id)
 
         return invite_link
@@ -183,9 +152,6 @@ async def create_telegram_group(group_title: str, bot, owner_user_id: int, creat
     except Exception as e:
         logger.error(f"Group creation routine failed: {e}", exc_info=True)
         return None
-    finally:
-        if dummy_bot_client.is_connected:
-            await dummy_bot_client.stop()
 
 async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
@@ -197,6 +163,7 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     user = query.from_user
     owner_user_id = user.id
     
+    # Nickname logic (First Name + Last Name)
     creator_nickname = user.first_name
     if user.last_name:
         creator_nickname += f" {user.last_name}"
@@ -241,8 +208,8 @@ async def auto_delete_service_messages(update: Update, context: ContextTypes.DEF
 async def main_async():
     global user_client
     
-    if not BOT_TOKEN or not STRING_SESSION or not DUMMY_BOT_TOKEN:
-        logger.error("Missing critical environment variables (BOT_TOKEN, STRING_SESSION, or DUMMY_BOT_TOKEN)")
+    if not BOT_TOKEN or not STRING_SESSION:
+        logger.error("Missing critical environment variables (BOT_TOKEN or STRING_SESSION)")
         return
 
     logger.info("Initializing Pyrogram Userbot Client...")
@@ -296,4 +263,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-        
+            
