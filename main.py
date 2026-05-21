@@ -94,12 +94,7 @@ async def create_telegram_group(group_title: str, bot) -> str:
 
         await user_client.promote_chat_member(
             chat_id=chat_id,
-            user_id=bot_username,
-            can_delete_messages=True,
-            can_restrict_members=True,
-            can_change_info=True,
-            can_invite_users=True,
-            can_pin_messages=True
+            user_id=bot_username
         )
 
         await asyncio.sleep(1)
