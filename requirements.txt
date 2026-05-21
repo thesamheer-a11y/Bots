@@ -1,1 +1,4 @@
-python-telegram-bot==21.1.1
+python-telegram-bot==20.8
+pyrogram==2.0.10
+tgcrypto==1.2.5
+
