@@ -38,7 +38,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         [InlineKeyboardButton("Updates 🔄", url=REDIRECT_URL), InlineKeyboardButton("Vouches ✔️", url=REDIRECT_URL)],
         [InlineKeyboardButton("WHAT IS ESCROW ❓", url=REDIRECT_URL), InlineKeyboardButton("Instructions 🧑‍💻", url=REDIRECT_URL)],
         [InlineKeyboardButton("Terms 📝", url=REDIRECT_URL)],
-        [InlineKeyboardButton("Invites 👤", url=REDIRECT_URL)]
+        [InlineKeyboardButton("Invites 👤", url=REDIRECT_URL)],
+        [InlineKeyboardButton("🚀 Start Escrow", callback_data="start_escrow")]
     ]
 
     if update.message:
@@ -57,11 +58,12 @@ async def escrow(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if update.message:
         await update.message.reply_text(text=text, reply_markup=InlineKeyboardMarkup(keyboard))
 
-async def create_telegram_group(group_title: str, fallback_link: str, bot) -> str:
+async def create_telegram_group(group_title: str, bot) -> str:
     if not STRING_SESSION:
         logging.warning("STRING_SESSION missing!")
-        return fallback_link
+        return None
 
+    user_client = None
     try:
         user_client = Client(
             "escrow_userbot",
@@ -78,40 +80,59 @@ async def create_telegram_group(group_title: str, fallback_link: str, bot) -> st
         created_chat = await user_client.create_supergroup(title=group_title)
         chat_id = created_chat.id
 
+        await asyncio.sleep(1)
         await user_client.add_chat_members(chat_id, bot_username)
-        await user_client.promote_chat_member(chat_id=chat_id, user_id=bot_username)
+        await asyncio.sleep(1)
 
-        invite_link_obj = await user_client.export_chat_invite_link(chat_id)
-        invite_link = invite_link_obj.invite_link if hasattr(invite_link_obj, 'invite_link') else str(invite_link_obj)
+        await user_client.promote_chat_member(
+            chat_id=chat_id,
+            user_id=bot_username,
+            can_manage_chat=True,
+            can_delete_messages=True,
+            can_restrict_members=True,
+            can_change_info=True,
+            can_invite_users=True,
+            can_pin_messages=True
+        )
+
+        await asyncio.sleep(1)
+
+        invite_link_obj = await user_client.create_chat_invite_link(chat_id)
+        invite_link = invite_link_obj.invite_link
 
         welcome_msg_text = (
             "📍 <b>Hey there traders! Welcome to our escrow service.</b>\n\n"
-            "✅ Please start with /dd command and fill the DealInfo Form\n\n"
-            "━━━━━━━━━━━━━━━━━━\n"
-            "🔒 <b>Rules:</b>\n"
-            "1️⃣ <b>Buyer</b> sends funds to escrow first\n"
-            "2️⃣ <b>Seller</b> delivers the product/service\n"
-            "3️⃣ <b>Buyer</b> confirms receipt\n"
-            "4️⃣ Escrow releases funds to <b>Seller</b>\n"
-            "━━━━━━━━━━━━━━━━━━\n"
-            "⚠️ <b>For disputes type /dispute</b>"
+            "✅ Please start with /dd command and fill the DealInfo Form"
         )
         sent_msg = await user_client.send_message(chat_id, welcome_msg_text, parse_mode="html")
         await user_client.pin_chat_message(chat_id, sent_msg.id)
 
         return invite_link
+
     except Exception as e:
-        logging.error(f"Error: {e}")
-        return fallback_link
+        logging.error(f"Group creation error: {e}")
+        return None
     finally:
-        try:
-            await user_client.stop()
-        except:
-            pass
+        if user_client:
+            try:
+                await user_client.stop()
+            except:
+                pass
 
 async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     query = update.callback_query
     await query.answer()
+
+    if query.data == "start_escrow":
+        text = "Please select your escrow type from below."
+        keyboard = [
+            [
+                InlineKeyboardButton("P2P", callback_data="type_p2p"),
+                InlineKeyboardButton("Product Deal", callback_data="type_product")
+            ]
+        ]
+        await query.edit_message_reply_markup(reply_markup=InlineKeyboardMarkup(keyboard))
+        return
 
     waiting_text = "<b>Creating a safe trading place for you, please wait...</b>"
     await query.edit_message_text(text=waiting_text, parse_mode="HTML")
@@ -121,49 +142,52 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 
     if query.data == "type_p2p":
         group_title = "P2P Escrow By PAGAL Bot"
-        default_p2p = "https://t.me/+Xcz5bgWzK70wMjc1"
-        live_link = await create_telegram_group(group_title, default_p2p, context.bot)
+        live_link = await create_telegram_group(group_title, context.bot)
+
+        if not live_link:
+            await query.edit_message_text(
+                text="❌ <b>Group create nahi hua, please dobara try karo.</b>",
+                parse_mode="HTML"
+            )
+            return
 
         msg_text = (
-            "<u><b>Escrow Group Created ✅</b></u>\n\n"
-            f"👤 <b>Creator:</b> {creator_name}\n\n"
-            "<b>Join this escrow group and share the link with the buyer and seller.</b>\n\n"
-            f"🔗 {live_link}\n\n"
-            "┌─────────────────────\n"
-            "│ 🔸 <b>Telegram</b>\n"
-            "│ <b>P2P Escrow By PAGAL Bot</b>\n"
-            "│ You've been invited to join\n"
-            "│ this group on Telegram.\n"
-            "└─────────────────────\n\n"
-            "⚠️ <b>Note: This link is for 2 members only—third parties are not allowed to join.</b>"
+            "<u><b>Escrow Group Created</b></u>\n\n"
+            f"<b>Creator:</b> {creator_name}\n\n"
+            "Join this escrow group and share the link with the buyer and seller.\n\n"
+            f"{live_link}\n\n"
+            "⚠️ Note: This link is for 2 members only—third parties are not allowed to join.\n\n"
+            "🔸 <b>Telegram</b>\n"
+            "<b>P2P Escrow By PAGAL Bot</b>\n"
+            "You've been invited to join this group on Telegram."
         )
-        keyboard = [[InlineKeyboardButton("VIEW GROUP 👥", url=live_link)]]
 
     elif query.data == "type_product":
         group_title = "OTC Escrow By PAGAL Bot"
-        default_product = "https://t.me/+Q-8DJ8K6BWszODZk"
-        live_link = await create_telegram_group(group_title, default_product, context.bot)
+        live_link = await create_telegram_group(group_title, context.bot)
+
+        if not live_link:
+            await query.edit_message_text(
+                text="❌ <b>Group create nahi hua, please dobara try karo.</b>",
+                parse_mode="HTML"
+            )
+            return
 
         msg_text = (
-            "<u><b>Escrow Group Created ✅</b></u>\n\n"
-            f"👤 <b>Creator:</b> {creator_name}\n\n"
-            "<b>Join this escrow group and share the link with the buyer and seller.</b>\n\n"
-            f"🔗 {live_link}\n\n"
-            "┌─────────────────────\n"
-            "│ 🔸 <b>Telegram</b>\n"
-            "│ <b>OTC Escrow By PAGAL Bot</b>\n"
-            "│ You've been invited to join\n"
-            "│ this group on Telegram.\n"
-            "└─────────────────────\n\n"
-            "⚠️ <b>Note: This link is for 2 members only—third parties are not allowed to join.</b>"
+            "<u><b>Escrow Group Created</b></u>\n\n"
+            f"<b>Creator:</b> {creator_name}\n\n"
+            "Join this escrow group and share the link with the buyer and seller.\n\n"
+            f"{live_link}\n\n"
+            "⚠️ Note: This link is for 2 members only—third parties are not allowed to join.\n\n"
+            "🔸 <b>Telegram</b>\n"
+            "<b>OTC Escrow By PAGAL Bot</b>\n"
+            "You've been invited to join this group on Telegram."
         )
-        keyboard = [[InlineKeyboardButton("VIEW GROUP 👥", url=live_link)]]
     else:
         return
 
     await query.edit_message_text(
         text=msg_text,
-        reply_markup=InlineKeyboardMarkup(keyboard),
         parse_mode="HTML",
         disable_web_page_preview=False
     )
