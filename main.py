@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
 STRING_SESSION = os.environ.get("STRING_SESSION", "").strip()
 
-# ⚠️ YAHAN APNE DUMMY BOT KA TOKEN DALO
+# ⚠️ YAHAN DIRECT APNA NEW DUMMY BOT TOKEN PASTE KARO (Quotes ke andar)
 DUMMY_BOT_TOKEN = "YAHAN_APNA_NEW_BOT_TOKEN_DALO"
 
 API_ID = 33039308
@@ -143,7 +143,7 @@ async def create_telegram_group(group_title: str, bot, owner_user_id: int, creat
         invite_link_obj = await user_client.create_chat_invite_link(chat_id)
         invite_link = invite_link_obj.invite_link
 
-        # 7. Dummy Bot sends the welcome message anonymously (Group Name se)
+        # 7. Dummy Bot sends the welcome message anonymously
         welcome_msg_text = (
             "📍 **Hey there traders! Welcome to our escrow service.**\n\n"
             "✅ Please start with /dd command and fill the DealInfo Form"
@@ -197,7 +197,6 @@ async def button_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     user = query.from_user
     owner_user_id = user.id
     
-    # Nickname logic (First Name + Last Name)
     creator_nickname = user.first_name
     if user.last_name:
         creator_nickname += f" {user.last_name}"
@@ -297,3 +296,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+        
