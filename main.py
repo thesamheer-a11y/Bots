@@ -4,6 +4,7 @@ import logging
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
 from pyrogram import Client
+from pyrogram.types import ChatPrivileges
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
@@ -88,13 +89,35 @@ async def create_telegram_group(group_title: str, bot) -> str:
         created_chat = await user_client.create_supergroup(title=group_title)
         chat_id = created_chat.id
 
-        await asyncio.sleep(1)
+        await asyncio.sleep(2)
+
         await user_client.add_chat_members(chat_id, bot_username)
-        await asyncio.sleep(1)
+        await asyncio.sleep(2)
 
         await user_client.promote_chat_member(
             chat_id=chat_id,
-            user_id=bot_username
+            user_id=bot_username,
+            privileges=ChatPrivileges(
+                can_manage_chat=True,
+                can_delete_messages=True,
+                can_restrict_members=True,
+                can_change_info=True,
+                can_invite_users=True,
+                can_pin_messages=True,
+                is_anonymous=False
+            )
+        )
+
+        await asyncio.sleep(1)
+
+        # Owner ko anonymous karo
+        me = await user_client.get_me()
+        await user_client.promote_chat_member(
+            chat_id=chat_id,
+            user_id=me.id,
+            privileges=ChatPrivileges(
+                is_anonymous=True
+            )
         )
 
         await asyncio.sleep(1)
